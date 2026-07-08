@@ -1,0 +1,15 @@
+This is a sample evidence slot.
+
+Expected command:
+
+  rosbag info /path/to/raw_full_scene.bag
+
+The captured output should show at least:
+
+  /livox/lidar                    livox_ros_driver2/CustomMsg
+  /livox/imu                      sensor_msgs/Imu
+  /hikrobot_camera/rgb            sensor_msgs/Image
+  /hikrobot_camera/camera_info    sensor_msgs/CameraInfo
+
+Record the duration, message counts, compression type and per-topic message counts
+from the real bag used for reconstruction.

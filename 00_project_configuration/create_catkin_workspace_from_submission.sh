@@ -6,7 +6,7 @@
 
 set -euo pipefail
 
-WORKSPACE="${FAST_LIVO2_WS:-/root/fast_lio2_ws}"
+WORKSPACE="${RK3588_WS:-${FAST_LIVO2_WS:-/root/fast_lio2_ws}}"
 MODE="link"
 WITH_CALIBRATION="false"
 

@@ -1,0 +1,22 @@
+{
+  "note": "Sample schema only. Fill with real reconstruction output metadata.",
+  "input_bag": "/path/to/raw_full_scene.bag",
+  "play_rate": 0.5,
+  "post_play_wait_sec": 60,
+  "outputs": {
+    "colored_cloud": {
+      "path": "result/all_raw_points.pcd",
+      "points": null,
+      "has_rgb": null
+    },
+    "registered_intensity": {
+      "path": "result/fast_livo2_only_lio_registered_intensity_full.pcd",
+      "points": null
+    },
+    "trajectory": {
+      "path": "result/lidar_poses.txt",
+      "poses": null
+    }
+  },
+  "runtime_sec": null
+}

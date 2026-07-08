@@ -7,6 +7,6 @@ camera:
   frame_rate: 10.0
   pixel_format: 0
   pixel_format_name: RGB8
-  config_path: /root/fast_lio2_ws/src/mvs_ros_driver/config/left_camera_trigger.yaml
+  config_path: /root/fast_lio2_ws/src/mvs_ros_driver/config/left_camera_trigger.local.yaml
 notes:
   dev_video0: HDMI input, not the Hikrobot camera

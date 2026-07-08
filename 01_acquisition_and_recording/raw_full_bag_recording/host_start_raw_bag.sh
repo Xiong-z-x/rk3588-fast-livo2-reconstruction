@@ -5,6 +5,7 @@ docker_tty=(-i)
 if [ -t 0 ]; then
   docker_tty=(-it)
 fi
+RK3588_ROS_CONTAINER="${RK3588_ROS_CONTAINER:-rk3588_dev}"
 
 docker exec "${docker_tty[@]}" \
   -e RAW_BAG_ROOT="${RAW_BAG_ROOT:-}" \
@@ -14,4 +15,4 @@ docker exec "${docker_tty[@]}" \
   -e RAW_BAG_CONFIRM_START="${RAW_BAG_CONFIRM_START:-}" \
   -e RAW_BAG_START_WORD="${RAW_BAG_START_WORD:-}" \
   -e DISPLAY="${DISPLAY:-:0}" \
-  rk3588_dev bash -lc '/root/fast_livo_runs/scripts/start_raw_full_bag.sh "$@"' _ "$@"
+  "$RK3588_ROS_CONTAINER" bash -lc '/root/fast_livo_runs/scripts/start_raw_full_bag.sh "$@"' _ "$@"

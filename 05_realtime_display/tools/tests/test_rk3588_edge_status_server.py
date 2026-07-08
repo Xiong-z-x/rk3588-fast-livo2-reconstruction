@@ -44,6 +44,16 @@ Subscribers:
         self.assertEqual(server.normalize_request_path("/api/status?rev=20260708"), "/api/status")
         self.assertEqual(server.normalize_request_path("/status?cacheBust=1"), "/status")
 
+    def test_parse_rknpu_load_reports_each_core_and_average(self) -> None:
+        value, status, details = server.parse_rknpu_load_text("NPU load: core0: 40%, core1: 70%, core2: 90%")
+
+        self.assertEqual(value, "66.7")
+        self.assertEqual(status, "warning")
+        self.assertEqual(details["core0"], 40.0)
+        self.assertEqual(details["core1"], 70.0)
+        self.assertEqual(details["core2"], 90.0)
+        self.assertEqual(details["peak"], 90.0)
+
 
 if __name__ == "__main__":
     unittest.main()

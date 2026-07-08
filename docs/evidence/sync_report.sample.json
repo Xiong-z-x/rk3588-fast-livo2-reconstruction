@@ -1,0 +1,16 @@
+{
+  "note": "Sample schema only. Fill with measured values from timestamp diagnostics before claiming strict synchronization.",
+  "bag": "/path/to/raw_full_scene.bag",
+  "topics": {
+    "lidar": "/livox/lidar",
+    "imu": "/livox/imu",
+    "image": "/hikrobot_camera/rgb",
+    "camera_info": "/hikrobot_camera/camera_info"
+  },
+  "camera_duplicate_header_stamps": null,
+  "camera_max_gap_sec": null,
+  "camera_gap_p95_sec": null,
+  "lidar_rate_hz": null,
+  "imu_rate_hz": null,
+  "image_rate_hz": null
+}

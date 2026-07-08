@@ -8,7 +8,7 @@ fi
 
 BAG_PATH="$1"
 RUN_DIR="$2"
-WS="/root/fast_lio2_ws"
+WS="${RK3588_WS:-/root/fast_lio2_ws}"
 PKG_DIR="$WS/src/FAST-LIVO2"
 LOG_DIR="$RUN_DIR/logs"
 RESULT_DIR="$RUN_DIR/result"

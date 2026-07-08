@@ -4,25 +4,45 @@ sources:
     commit: "0d2c0346107b75b59934975adec9a6eeeb913c64"
     local_directory: "07_full_source_code/FAST-LIVO2_elf2_mid360_hik"
     role: "FAST-LIVO2 mapping algorithm source"
+    license: "GPL-2.0-only, see local LICENSE"
+    project_changes:
+      - "Adapted Livox message dependency to livox_ros_driver2::CustomMsg"
+      - "Added Mid-360/Hikrobot launch and parameter files"
+      - "Added runtime validation for required extrinsic arrays"
+      - "Added ONLY_LIO launch mode for LiDAR/IMU-only reconstruction"
   livox_ros_driver2:
     repository: "https://github.com/Livox-SDK/livox_ros_driver2"
     commit: "13eb05e4e6dd7a765b934d0c5fd6236676a57b49"
     local_directory: "07_full_source_code/livox_ros_driver2_elf2_mid360"
     role: "Livox Mid-360 ROS1/ROS2 driver source"
+    license: "MIT, see local LICENSE.txt"
+    project_changes:
+      - "Kept ROS1 Noetic launch path used by the RK3588 Docker runtime"
+      - "Added project example configuration under livox_ros_driver2_project_config"
   mvs_ros_driver:
     repository: "https://github.com/flywave/mvs_ros_driver"
     commit: "77a456519a21c3f577e228e43646b3bc6efb5d4b"
     local_directory: "07_full_source_code/mvs_ros_driver_elf2_hikrobot"
     role: "Hikrobot MVS ROS camera driver source"
+    license: "MIT as declared for this ROS package adaptation"
+    project_changes:
+      - "Added RGB8 image publishing on /hikrobot_camera/rgb"
+      - "Added explicit /hikrobot_camera/camera_info publisher with K/D/R/P calibration"
+      - "Added TriggerEnable/TriggerMode/TriggerSource/LineSelector configuration path"
+      - "Added PixelFormat and FrameRate parameter handling for the Hikrobot camera"
   direct_visual_lidar_calibration:
     repository: "https://github.com/koide3/direct_visual_lidar_calibration"
     commit: "02a0dc039f5509708f384be4ff3228e0ae09352d"
     local_directory: "07_full_source_code/direct_visual_lidar_calibration_elf2"
     role: "Targetless visual-lidar extrinsic calibration source"
+    license: "Upstream license files retained in source tree"
+    project_changes:
+      - "Included project scripts and config wrappers for Mid-360/Hikrobot targetless calibration"
   direct_visual_lidar_calibration_thirdparty_json:
     repository: "https://github.com/nlohmann/json"
     commit: "307c053b9b250abc6e6d478a4336fd98592ae173"
     role: "Sparse checkout of required json headers; test reports and images omitted"
+    license: "MIT, inherited from nlohmann/json"
 project_adaptation:
   platform: "RK3588 / ELF2-class board"
   ros: "ROS1 Noetic in Docker"

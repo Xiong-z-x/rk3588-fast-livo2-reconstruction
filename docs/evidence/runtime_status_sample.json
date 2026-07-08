@@ -1,0 +1,12 @@
+{
+  "note": "Sample shape of rk3588_edge_status_server.py output.",
+  "adapterState": "live",
+  "sourceLabel": "RK3588/ELF2 edge status backend",
+  "container": "rk3588_dev",
+  "metrics": [
+    {"label": "CPU load", "value": "0.80", "unit": "loadavg 1min", "status": "ready"},
+    {"label": "Memory used", "value": "42.0", "unit": "%", "status": "ready"},
+    {"label": "RKNPU load", "value": "66.7", "unit": "% average / raw", "status": "warning", "details": {"core0": 40.0, "core1": 70.0, "core2": 90.0, "average": 66.7, "peak": 90.0}}
+  ],
+  "topics": []
+}

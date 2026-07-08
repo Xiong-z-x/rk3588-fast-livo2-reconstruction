@@ -1,0 +1,9 @@
+This is a sample evidence slot, not a fabricated target build log.
+
+Expected command on the RK3588/ELF2 ROS1 runtime:
+
+  cd /root/fast_lio2_ws
+  catkin_make
+
+A real submission build log should include the full stdout/stderr from catkin_make
+showing FAST-LIVO2, livox_ros_driver2 and hikrobot_camera compilation results.

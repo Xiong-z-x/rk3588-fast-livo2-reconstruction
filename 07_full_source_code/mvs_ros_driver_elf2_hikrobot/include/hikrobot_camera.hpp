@@ -137,6 +137,13 @@ namespace camera
         node.param("TriggerSource", TriggerSource, 0);
         node.param("LineSelector", LineSelector, 0);
         node.param("PixelFormat", PixelFormat, 0);
+        printf(
+            "Hikrobot trigger config: TriggerEnable=%d TriggerMode=%d TriggerSource=%d LineSelector=%d PixelFormat=%d\n",
+            trigger_enable,
+            TriggerMode,
+            TriggerSource,
+            LineSelector,
+            PixelFormat);
 
         //********** 枚举设备 ********************************/
         MV_CC_DEVICE_INFO_LIST stDeviceList;
@@ -565,7 +572,7 @@ namespace camera
 
             if (MV_OK == nRet)
             {
-                printf("set TriggerMode OK!\n");
+                printf("set TriggerMode OK! value=%f\n", value);
             }
             else
             {
@@ -580,7 +587,7 @@ namespace camera
 
             if (MV_OK == nRet)
             {
-                printf("set TriggerSource OK!\n");
+                printf("set TriggerSource OK! value=%f\n", value);
             }
             else
             {
@@ -595,7 +602,7 @@ namespace camera
 
             if (MV_OK == nRet)
             {
-                printf("set LineSelector OK!\n");
+                printf("set LineSelector OK! value=%f\n", value);
             }
             else
             {

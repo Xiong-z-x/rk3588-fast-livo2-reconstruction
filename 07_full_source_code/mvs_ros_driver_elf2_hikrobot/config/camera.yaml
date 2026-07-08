@@ -1,6 +1,6 @@
 # Hikrobot USB camera configuration for the ELF2/RK3588 Mid-360 system.
 CameraName: hikrobot_camera
-SerialNumber: YOUR_HIKROBOT_CAMERA_SERIAL
+SerialNumber: ""
 TopicName: /hikrobot_camera/rgb
 CameraInfoTopicName: /hikrobot_camera/camera_info
 FrameId: hikrobot_camera

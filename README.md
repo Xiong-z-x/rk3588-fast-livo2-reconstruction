@@ -55,6 +55,7 @@ flowchart LR
 06_source_manifests/               Source provenance records
 07_full_source_code/               ELF2-adapted upstream source trees and project adaptation configs
 docs/design/                       Architecture, synchronization, calibration and visualization notes
+docs/evidence/                     Evidence templates for build, rosbag, sync, runtime and reconstruction results
 ```
 
 ## Source Trees
@@ -82,15 +83,18 @@ The source directories are named with an `elf2` suffix to identify this reposito
 - Camera info topic: `/hikrobot_camera/camera_info`
 - Recommended offline playback rate: `0.5x` for stable reconstruction on limited embedded hardware
 
-Public configuration files use placeholder serial numbers, MAC addresses and IP addresses. Replace `YOUR_*` and `192.168.x.x` with local hardware values before deployment.
+Public hardware configuration templates are named `.example.*`. Copy them to local files and replace placeholder serial numbers, MAC addresses and IP addresses before deployment. See [README_REPRODUCE.md](README_REPRODUCE.md) for the exact copy, validation, build and run sequence.
 
 ## Quick Start
 
 Assemble the ROS1 workspace from the packaged source trees:
 
 ```bash
+export RK3588_ROS_CONTAINER=${RK3588_ROS_CONTAINER:-rk3588_dev}
+export RK3588_WS=${RK3588_WS:-/root/fast_lio2_ws}
+
 ./00_project_configuration/create_catkin_workspace_from_submission.sh \
-  --workspace /root/fast_lio2_ws \
+  --workspace "$RK3588_WS" \
   --copy
 ```
 
@@ -99,7 +103,7 @@ Use `--with-calibration` only when the review machine also has the dependencies 
 Build the ROS1 workspace on the target runtime:
 
 ```bash
-cd /root/fast_lio2_ws
+cd "$RK3588_WS"
 catkin_make
 source devel/setup.bash
 ```
@@ -107,14 +111,15 @@ source devel/setup.bash
 Record raw LiDAR, IMU and camera topics:
 
 ```bash
-/home/cat/bin/start_raw_bag demo_scene
-/home/cat/bin/stop_raw_bag
+01_acquisition_and_recording/raw_full_bag_recording/host_start_raw_bag.sh demo_scene
+01_acquisition_and_recording/raw_full_bag_recording/host_stop_raw_bag.sh
 ```
 
 Record LiDAR-only data with automatic stop:
 
 ```bash
-LIO_BAG_DURATION_SEC=180 /home/cat/bin/start_lidar_only_bag demo_lio_scene
+LIO_BAG_DURATION_SEC=180 \
+01_acquisition_and_recording/lidar_only_recording/host_start_lidar_only_bag.sh demo_lio_scene
 ```
 
 Run FAST-LIVO2 offline reconstruction:
@@ -122,7 +127,8 @@ Run FAST-LIVO2 offline reconstruction:
 ```bash
 FAST_LIVO2_PLAY_RATE=0.5 \
 FAST_LIVO2_POST_PLAY_WAIT_SEC=60 \
-/root/fast_livo2_runs/run_fast_livo2_offline_bag.sh /path/to/raw.bag
+02_reconstruction_and_mapping/fast_livo2_offline/run_fast_livo2_offline_bag.sh \
+  /path/to/raw.bag /path/to/run_dir
 ```
 
 Run ONLY_LIO reconstruction:
@@ -130,7 +136,8 @@ Run ONLY_LIO reconstruction:
 ```bash
 FAST_LIVO2_PLAY_RATE=0.5 \
 FAST_LIVO2_POST_PLAY_WAIT_SEC=60 \
-/root/fast_livo2_runs/run_fast_livo2_only_lio_offline_bag.sh /path/to/lidar_only.bag
+02_reconstruction_and_mapping/fast_livo2_only_lio_offline/run_fast_livo2_only_lio_offline_bag.sh \
+  /path/to/lidar_only.bag /path/to/run_dir
 ```
 
 ## Visualization
@@ -164,7 +171,8 @@ Start the read-only edge status backend on the board or inside the ROS host:
 python3 05_realtime_display/tools/rk3588_edge_status_server.py \
   --host 127.0.0.1 \
   --port 8766 \
-  --container rk3588_dev
+  --container "${RK3588_ROS_CONTAINER:-rk3588_dev}" \
+  --workspace "${RK3588_WS:-/root/fast_lio2_ws}"
 ```
 
 Run the web dashboard:
@@ -175,7 +183,7 @@ npm ci
 npm run dev
 ```
 
-The dashboard fetches `/api/status` through the Vite proxy. It does not fabricate live metrics: if the backend or ROS master is unavailable, the page shows waiting or error states.
+The dashboard fetches `/api/status` through the Vite proxy. It does not fabricate live metrics: if the backend or ROS master is unavailable, the page shows waiting or error states. This component is an edge status panel for Docker, ROS topics, CPU, memory and RKNPU status; point-cloud browsing is handled by the WebGL viewers under `04_visualization`.
 
 For Foxglove readiness checks, `05_realtime_display/tools/rk3588_display_probe.py` defaults to read-only mode, validates Docker container names, rejects unknown SSH host keys by default and binds bridge startup to `127.0.0.1` unless a different address is explicitly supplied.
 
@@ -195,6 +203,8 @@ Recommended static viewer layers:
 - [Calibration workflow](docs/design/calibration_workflow.md)
 - [Reconstruction and visualization](docs/design/reconstruction_visualization.md)
 - [Source provenance](07_full_source_code/source_provenance/SOURCE_PROVENANCE.yaml)
+- [Reproduction guide](README_REPRODUCE.md)
+- [Evidence templates](docs/evidence/)
 
 ## Static Checks
 

@@ -7,6 +7,7 @@ import argparse
 import json
 import os
 import re
+import shlex
 import socket
 import subprocess
 import time
@@ -70,11 +71,12 @@ def docker_bash(container: str, command: str, timeout_s: float = 4.0) -> Command
     return run_command(["docker", "exec", container, "bash", "-lc", command], timeout_s=timeout_s)
 
 
-def ros_command(container: str, command: str, timeout_s: float = 4.0) -> CommandResult:
+def ros_command(container: str, command: str, timeout_s: float = 4.0, workspace: str | None = None) -> CommandResult:
+    workspace_path = workspace or os.environ.get("RK3588_WS", "/root/fast_lio2_ws")
+    workspace_q = shlex.quote(workspace_path)
     setup = (
         "source /opt/ros/noetic/setup.bash; "
-        "source /root/fast_lio2_ws/devel/setup.bash 2>/dev/null || true; "
-        "source /root/mid360_ws/devel/setup.bash 2>/dev/null || true; "
+        f"source {workspace_q}/devel/setup.bash 2>/dev/null || true; "
     )
     return docker_bash(container, setup + command, timeout_s=timeout_s)
 
@@ -104,7 +106,29 @@ def read_loadavg() -> str:
         return f"unavailable: {exc}"
 
 
-def read_rknpu_load() -> tuple[str, str]:
+def parse_rknpu_load_text(raw: str) -> tuple[str, str, dict[str, float]]:
+    core_values: dict[str, float] = {}
+    for match in re.finditer(r"core\s*([0-9]+)\D+?([0-9]+(?:\.[0-9]+)?)\s*%", raw, flags=re.I):
+        core_values[f"core{match.group(1)}"] = float(match.group(2))
+
+    if core_values:
+        values = list(core_values.values())
+        average = sum(values) / len(values)
+        peak = max(values)
+        details = dict(sorted(core_values.items()))
+        details["average"] = round(average, 1)
+        details["peak"] = peak
+        return f"{average:.1f}", "ready" if peak < 90 else "warning", details
+
+    percent_values = [float(value) for value in re.findall(r"([0-9]+(?:\.[0-9]+)?)\s*%", raw)]
+    if percent_values:
+        value = percent_values[0]
+        return f"{value:.1f}", "ready" if value < 90 else "warning", {"average": value, "peak": value}
+
+    return raw[:96], "ready", {}
+
+
+def read_rknpu_load() -> tuple[str, str, dict[str, float]]:
     candidates = (
         Path("/sys/kernel/debug/rknpu/load"),
         Path("/sys/kernel/debug/rknpu/summary"),
@@ -117,16 +141,12 @@ def read_rknpu_load() -> tuple[str, str]:
             raw = path.read_text(encoding="utf-8", errors="replace").strip()
             if not raw:
                 continue
-            percent_match = re.search(r"(\d+(?:\.\d+)?)\s*%", raw)
-            if percent_match:
-                value = float(percent_match.group(1))
-                return f"{value:.1f}", "ready" if value < 90 else "warning"
-            return raw[:96], "ready"
+            return parse_rknpu_load_text(raw)
         except PermissionError:
-            return f"permission denied: {path}", "warning"
+            return f"permission denied: {path}", "warning", {}
         except Exception as exc:  # noqa: BLE001
-            return f"{path}: {exc}", "warning"
-    return "not exposed", "waiting"
+            return f"{path}: {exc}", "warning", {}
+    return "not exposed", "waiting", {}
 
 
 def parse_topic_info(text: str) -> tuple[int | None, int | None]:
@@ -157,8 +177,8 @@ def parse_topic_info(text: str) -> tuple[int | None, int | None]:
     return publishers, subscribers
 
 
-def read_topic_status(container: str, topic: str, measure_hz: bool, hz_window: float) -> dict[str, Any]:
-    type_result = ros_command(container, f"timeout 3s rostopic type {topic}", timeout_s=4)
+def read_topic_status(container: str, topic: str, measure_hz: bool, hz_window: float, workspace: str) -> dict[str, Any]:
+    type_result = ros_command(container, f"timeout 3s rostopic type {topic}", timeout_s=4, workspace=workspace)
     if type_result.returncode != 0:
         return {
             "name": topic,
@@ -170,12 +190,12 @@ def read_topic_status(container: str, topic: str, measure_hz: bool, hz_window: f
             "message": type_result.stderr or type_result.stdout or "topic unavailable",
         }
 
-    info_result = ros_command(container, f"timeout 3s rostopic info {topic}", timeout_s=4)
+    info_result = ros_command(container, f"timeout 3s rostopic info {topic}", timeout_s=4, workspace=workspace)
     publishers, subscribers = parse_topic_info(info_result.stdout) if info_result.returncode == 0 else (None, None)
 
     hz: float | None = None
     if measure_hz:
-        hz_result = ros_command(container, f"timeout {int(hz_window + 2)}s rostopic hz -w {hz_window:g} {topic}", timeout_s=hz_window + 3)
+        hz_result = ros_command(container, f"timeout {int(hz_window + 2)}s rostopic hz -w {hz_window:g} {topic}", timeout_s=hz_window + 3, workspace=workspace)
         match = re.search(r"average rate:\s*([0-9.]+)", hz_result.stdout)
         if match:
             hz = float(match.group(1))
@@ -195,13 +215,13 @@ def build_snapshot(args: argparse.Namespace) -> dict[str, Any]:
     now = time.strftime("%Y-%m-%dT%H:%M:%S%z")
     hostname = socket.gethostname()
     mem_value, mem_status = read_mem_percent()
-    rknpu_value, rknpu_status = read_rknpu_load()
+    rknpu_value, rknpu_status, rknpu_details = read_rknpu_load()
     docker_result = run_command(["docker", "inspect", "--format", "{{.State.Running}}", args.container], timeout_s=3)
     docker_ready = docker_result.returncode == 0 and docker_result.stdout.strip() == "true"
-    ros_list_result = ros_command(args.container, "timeout 3s rostopic list", timeout_s=4) if docker_ready else CommandResult(1, "", "container is not running")
+    ros_list_result = ros_command(args.container, "timeout 3s rostopic list", timeout_s=4, workspace=args.workspace) if docker_ready else CommandResult(1, "", "container is not running")
     ros_ready = ros_list_result.returncode == 0
 
-    topics = [read_topic_status(args.container, topic, args.measure_hz, args.hz_window) for topic in TARGET_TOPICS] if ros_ready else [
+    topics = [read_topic_status(args.container, topic, args.measure_hz, args.hz_window, args.workspace) for topic in TARGET_TOPICS] if ros_ready else [
         {
             "name": topic,
             "type": "",
@@ -217,7 +237,7 @@ def build_snapshot(args: argparse.Namespace) -> dict[str, Any]:
     metrics = [
         {"label": "CPU 负载", "value": read_loadavg(), "unit": "loadavg 1min", "status": "ready"},
         {"label": "内存占用", "value": mem_value, "unit": "%", "status": mem_status},
-        {"label": "RKNPU 负载", "value": rknpu_value, "unit": "% / raw", "status": rknpu_status},
+        {"label": "RKNPU load", "value": rknpu_value, "unit": "% average / raw", "status": rknpu_status, "details": rknpu_details},
         {"label": "ROS Master", "value": "online" if ros_ready else "offline", "unit": "11311", "status": "ready" if ros_ready else "offline"},
     ]
 
@@ -283,6 +303,7 @@ def main() -> int:
     parser.add_argument("--host", default="127.0.0.1")
     parser.add_argument("--port", default=8766, type=int)
     parser.add_argument("--container", default=os.environ.get("RK3588_ROS_CONTAINER", "rk3588_dev"), type=validate_container)
+    parser.add_argument("--workspace", default=os.environ.get("RK3588_WS", "/root/fast_lio2_ws"))
     parser.add_argument("--bridge-host", default="127.0.0.1")
     parser.add_argument("--bridge-port", default=8765, type=int)
     parser.add_argument("--measure-hz", action="store_true", help="Also run rostopic hz; useful but slower.")

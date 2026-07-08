@@ -75,9 +75,10 @@ def print_result(result: RemoteResult) -> None:
         print(result.stderr)
 
 
-def build_container_probe(container: str) -> str:
+def build_container_probe(container: str, workspace: str) -> str:
     topics = " ".join(TARGET_TOPICS)
     container_q = shlex.quote(container)
+    workspace_q = shlex.quote(workspace)
     return f"""
 docker exec {container_q} bash -lc '
 echo "===== identity ====="
@@ -85,7 +86,7 @@ hostname; whoami; pwd
 
 echo "===== ros_setup ====="
 if [ -f /opt/ros/noetic/setup.bash ]; then source /opt/ros/noetic/setup.bash; echo sourced_opt; fi
-if [ -f /root/mid360_ws/devel/setup.bash ]; then source /root/mid360_ws/devel/setup.bash; echo sourced_ws; fi
+if [ -f {workspace_q}/devel/setup.bash ]; then source {workspace_q}/devel/setup.bash; echo sourced_ws={workspace_q}; fi
 command -v rostopic || true
 command -v rosnode || true
 command -v roslaunch || true
@@ -119,13 +120,14 @@ echo "===== foxglove_bridge ====="
 """.strip()
 
 
-def build_bridge_start(container: str, bridge_address: str) -> str:
+def build_bridge_start(container: str, bridge_address: str, workspace: str) -> str:
     container_q = shlex.quote(container)
     bridge_address_q = shlex.quote(bridge_address)
+    workspace_q = shlex.quote(workspace)
     return f"""
 docker exec -d {container_q} bash -lc '
 source /opt/ros/noetic/setup.bash
-source /root/mid360_ws/devel/setup.bash 2>/dev/null || true
+source {workspace_q}/devel/setup.bash 2>/dev/null || true
 exec roslaunch foxglove_bridge foxglove_bridge.launch port:=8765 address:={bridge_address_q}
 '
 """.strip()
@@ -133,13 +135,18 @@ exec roslaunch foxglove_bridge foxglove_bridge.launch port:=8765 address:={bridg
 
 def main() -> int:
     parser = argparse.ArgumentParser(description="Probe RK3588 ROS/Foxglove display readiness.")
-    parser.add_argument("--host", default="192.168.x.x")
+    parser.add_argument("--host", default=os.environ.get("RK3588_HOST", ""))
     parser.add_argument("--user", default="cat")
-    parser.add_argument("--container", default="mid360_ros", type=validate_container_name)
+    parser.add_argument("--container", default=os.environ.get("RK3588_ROS_CONTAINER", "rk3588_dev"), type=validate_container_name)
+    parser.add_argument("--workspace", default=os.environ.get("RK3588_WS", "/root/fast_lio2_ws"))
     parser.add_argument("--bridge-address", default="127.0.0.1", type=validate_bridge_address)
     parser.add_argument("--password-env", default="RK3588_PASS")
     parser.add_argument("--start-bridge", action="store_true", help="Start foxglove_bridge. Requires explicit user approval.")
     args = parser.parse_args()
+
+    if not args.host:
+        print("Set --host or RK3588_HOST to the board IP address.", file=sys.stderr)
+        return 2
 
     password = os.environ.get(args.password_env)
     if not password:
@@ -178,7 +185,7 @@ def main() -> int:
             ),
             (
                 "container_ros_probe",
-                build_container_probe(args.container),
+                build_container_probe(args.container, args.workspace),
                 80,
             ),
         ]
@@ -189,7 +196,7 @@ def main() -> int:
         if args.start_bridge:
             print("\n===== start_bridge_requested =====")
             print(f"Starting foxglove_bridge on {args.bridge_address}:8765. This assumes ROS Master and /livox/lidar are already available.")
-            print_result(run_remote(client, "start_bridge", build_bridge_start(args.container, args.bridge_address), 20))
+            print_result(run_remote(client, "start_bridge", build_bridge_start(args.container, args.bridge_address, args.workspace), 20))
             print_result(
                 run_remote(
                     client,
