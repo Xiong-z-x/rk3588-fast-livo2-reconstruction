@@ -14,6 +14,7 @@ from dataclasses import dataclass
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from typing import Any
+from urllib.parse import urlparse
 
 
 TARGET_TOPICS = (
@@ -59,6 +60,10 @@ def validate_container(container: str) -> str:
     if not SAFE_CONTAINER_RE.fullmatch(container):
         raise argparse.ArgumentTypeError("container must match [A-Za-z0-9_.-]+")
     return container
+
+
+def normalize_request_path(path: str) -> str:
+    return urlparse(path).path
 
 
 def docker_bash(container: str, command: str, timeout_s: float = 4.0) -> CommandResult:
@@ -247,7 +252,8 @@ class StatusHandler(BaseHTTPRequestHandler):
         self.end_headers()
 
     def do_GET(self) -> None:  # noqa: N802
-        if self.path not in {"/api/status", "/status"}:
+        request_path = normalize_request_path(self.path)
+        if request_path not in {"/api/status", "/status"}:
             self.send_response(404)
             self.send_cors_headers()
             self.end_headers()

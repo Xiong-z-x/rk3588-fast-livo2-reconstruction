@@ -4,8 +4,9 @@
 #include <ros/ros.h>
 #include <cv_bridge/cv_bridge.h>
 #include <image_transport/image_transport.h>
-#include <camera_info_manager/camera_info_manager.h>
+#include <sensor_msgs/CameraInfo.h>
 #include <sensor_msgs/distortion_models.h>
+#include <sensor_msgs/image_encodings.h>
 #include "hikrobot_camera.hpp"
 
 // 剪裁掉照片和雷达没有重合的视角，去除多余像素可以使rosbag包变小
@@ -35,6 +36,7 @@ int main(int argc, char **argv)
     string frame_id;
     int image_width;
     int image_height;
+    double publish_rate_hz;
     vector<double> camera_matrix;
     vector<double> distortion_coefficients;
     vector<double> rectification_matrix;
@@ -47,6 +49,12 @@ int main(int argc, char **argv)
     hikrobot_camera.param<int>("width", image_width, image_width);
     hikrobot_camera.param<int>("Height", image_height, 1080);
     hikrobot_camera.param<int>("height", image_height, image_height);
+    publish_rate_hz = camera::readNumericParam(hikrobot_camera, "FrameRate", 10.0);
+    if (publish_rate_hz <= 0.0)
+    {
+        ROS_WARN_STREAM("FrameRate must be positive, got " << publish_rate_hz << "; using 10 Hz publish loop");
+        publish_rate_hz = 10.0;
+    }
 
     const vector<double> default_k = {1363.99324, 0.0, 710.95104,
                                       0.0, 1362.70434, 569.24445,
@@ -82,7 +90,8 @@ int main(int argc, char **argv)
 
     //********** rosnode init **********/
     image_transport::ImageTransport main_cam_image(hikrobot_camera);
-    image_transport::CameraPublisher image_pub = main_cam_image.advertiseCamera(topic_name, 1000);
+    image_transport::Publisher image_pub = main_cam_image.advertise(topic_name, 1000);
+    ros::Publisher camera_info_pub = hikrobot_camera.advertise<sensor_msgs::CameraInfo>(camera_info_topic_name, 1000);
 
     sensor_msgs::Image image_msg;
     sensor_msgs::CameraInfo camera_info_msg;
@@ -104,8 +113,7 @@ int main(int argc, char **argv)
     cv_bridge::CvImagePtr cv_ptr = boost::make_shared<cv_bridge::CvImage>();
     cv_ptr->encoding = sensor_msgs::image_encodings::RGB8;
     
-    //********** 10 Hz        **********/
-    ros::Rate loop_rate(10);
+    ros::Rate loop_rate(publish_rate_hz);
 
     while (ros::ok())
     {
@@ -133,7 +141,8 @@ int main(int argc, char **argv)
         camera_info_msg.width = image_msg.width;
         camera_info_msg.height = image_msg.height;
 	    camera_info_msg.header.stamp = image_msg.header.stamp;
-        image_pub.publish(image_msg, camera_info_msg);
+        image_pub.publish(image_msg);
+        camera_info_pub.publish(camera_info_msg);
 
         //*******************************************************************************************************************/
     }

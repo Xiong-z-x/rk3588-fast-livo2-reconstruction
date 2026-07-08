@@ -3,6 +3,7 @@
 #include "ros/ros.h"
 #include <stdio.h>
 #include <pthread.h>
+#include <string>
 #include <opencv2/opencv.hpp>
 #include "MvErrorDefine.h"
 #include "CameraParams.h"
@@ -18,6 +19,26 @@ namespace camera
     bool frame_empty = 0;
     //********** mutex ************************************/
     pthread_mutex_t mutex;
+
+    inline double readNumericParam(ros::NodeHandle &node, const std::string &name, double default_value)
+    {
+        XmlRpc::XmlRpcValue value;
+        if (!node.getParam(name, value))
+        {
+            return default_value;
+        }
+        if (value.getType() == XmlRpc::XmlRpcValue::TypeInt)
+        {
+            return static_cast<int>(value);
+        }
+        if (value.getType() == XmlRpc::XmlRpcValue::TypeDouble)
+        {
+            return static_cast<double>(value);
+        }
+        ROS_WARN_STREAM("Parameter " << name << " must be numeric; using default " << default_value);
+        return default_value;
+    }
+
     //********** CameraProperties config ************************************/
     enum CamerProperties
     {
@@ -74,7 +95,7 @@ namespace camera
         int Offset_x;
         int Offset_y;
         bool FrameRateEnable;
-        int FrameRate;
+        double FrameRate;
         int BurstFrameCount;
         int ExposureTime;
         bool GammaEnable;
@@ -85,6 +106,7 @@ namespace camera
         int TriggerMode;
         int TriggerSource;
         int LineSelector;
+        int PixelFormat;
     };
     //^ *********************************************************************************** //
 
@@ -99,7 +121,7 @@ namespace camera
         node.param("height", height, 2048);
         node.param("Height", height, height);
         node.param("FrameRateEnable", FrameRateEnable, false);
-        node.param("FrameRate", FrameRate, 10);
+        FrameRate = readNumericParam(node, "FrameRate", 10.0);
         node.param("BurstFrameCount", BurstFrameCount, 10); // 一次触发采集的次数
         node.param("ExposureTime", ExposureTime, 50000);
         node.param("GammaEnable", GammaEnable, false);
@@ -114,6 +136,7 @@ namespace camera
         node.param("TriggerMode", TriggerMode, trigger_enable ? 1 : 0);
         node.param("TriggerSource", TriggerSource, 0);
         node.param("LineSelector", LineSelector, 0);
+        node.param("PixelFormat", PixelFormat, 0);
 
         //********** 枚举设备 ********************************/
         MV_CC_DEVICE_INFO_LIST stDeviceList;
@@ -208,18 +231,7 @@ namespace camera
         this->set(CAP_PROP_SATURATION_ENABLE, SaturationEnable);
         if (SaturationEnable)
             this->set(CAP_PROP_SATURATION, Saturation);
-        //软件触发
-        // ********** frame **********/
-        nRet = MV_OK;
-        if (MV_OK == nRet)
-        {
-            printf("set TriggerMode OK!\n");
-        }
-        else
-        {
-            printf("MV_CC_SetTriggerMode fail! nRet [%x]\n", nRet);
-        }
-
+        // Trigger mode has already been configured from TriggerEnable/TriggerMode.
         //********** 图像格式 **********/
         // 0x01100003:Mono10
         // 0x010C0004:Mono10Packed
@@ -236,11 +248,12 @@ namespace camera
         // 0x0110000e:BayerGB10
         // 0x01100012:BayerGB12
         // 0x010C002C:BayerGB12Packed
-        nRet = MV_CC_SetEnumValue(handle, "PixelFormat", 0x02180014); // 目前 RGB  
+        int pixel_format_value = PixelFormat == 0 ? PixelType_Gvsp_RGB8_Packed : PixelFormat;
+        nRet = MV_CC_SetEnumValue(handle, "PixelFormat", pixel_format_value); // default RGB8Packed
 
         if (MV_OK == nRet)
         {
-            printf("set PixelFormat OK ! value = RGB\n");
+            printf("set PixelFormat OK ! value = %d\n", pixel_format_value);
         }
         else
         {

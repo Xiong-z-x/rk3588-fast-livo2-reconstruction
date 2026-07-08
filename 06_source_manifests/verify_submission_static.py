@@ -52,6 +52,11 @@ def main() -> int:
     require('MV_CC_SetEnumValue(handle, "TriggerMode", 0)' not in hik_header, "Hikrobot driver must not force TriggerMode off", failures)
     require("TriggerSource" in hik_header and "LineSelector" in hik_header, "Hikrobot driver must configure trigger source and line selector", failures)
     require("camera_info_msg.K" in hik_src and "camera_info_msg.P" in hik_src and "camera_info_msg.D" in hik_src, "Hikrobot driver must publish complete CameraInfo K/D/P", failures)
+    require("advertiseCamera(" not in hik_src, "Hikrobot driver must publish CameraInfo on CameraInfoTopicName, not the implicit image/camera_info namespace", failures)
+    require("advertise<sensor_msgs::CameraInfo>" in hik_src and "camera_info_pub.publish" in hik_src, "Hikrobot driver must explicitly advertise and publish CameraInfoTopicName", failures)
+    require("ros::Rate loop_rate(publish_rate_hz)" in hik_src, "Hikrobot publish loop must use the FrameRate parameter", failures)
+    require("nRet = MV_OK;\n        if (MV_OK == nRet)" not in hik_header, "Hikrobot trigger setup must not contain a fake TriggerMode success block", failures)
+    require("PixelFormat" in hik_header and "MV_CC_SetEnumValue(handle, \"PixelFormat\", pixel_format_value)" in hik_header, "Hikrobot driver must map the PixelFormat parameter into the SDK setting", failures)
     require("sensor_msgs::image_encodings::RGB8" in hik_src, "Hikrobot image topic must publish RGB8 when topic name is /rgb", failures)
 
     probe = read(DASHBOARD / "tools" / "rk3588_display_probe.py")
@@ -60,7 +65,9 @@ def main() -> int:
     require("address:=127.0.0.1" in probe or "bridge_address" in probe, "Foxglove bridge must not bind 0.0.0.0 by default", failures)
 
     require((DASHBOARD / "tools" / "rk3588_edge_status_server.py").exists(), "Realtime display must include a real edge status backend", failures)
+    require((DASHBOARD / "tools" / "tests" / "test_rk3588_edge_status_server.py").exists(), "Realtime status backend must include unit tests for path parsing and command safety", failures)
     require((DASHBOARD / "web_dashboard" / "src" / "data" / "liveAdapter.ts").exists(), "Web dashboard must include a live adapter", failures)
+    require((ROOT / "00_project_configuration" / "create_catkin_workspace_from_submission.sh").exists(), "Submission must include a script that assembles the catkin workspace from the packaged source trees", failures)
 
     project_scripts = []
     for base in (ROOT / "01_acquisition_and_recording", ROOT / "02_reconstruction_and_mapping"):

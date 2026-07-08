@@ -86,6 +86,16 @@ Public configuration files use placeholder serial numbers, MAC addresses and IP 
 
 ## Quick Start
 
+Assemble the ROS1 workspace from the packaged source trees:
+
+```bash
+./00_project_configuration/create_catkin_workspace_from_submission.sh \
+  --workspace /root/fast_lio2_ws \
+  --copy
+```
+
+Use `--with-calibration` only when the review machine also has the dependencies required by `direct_visual_lidar_calibration`.
+
 Build the ROS1 workspace on the target runtime:
 
 ```bash
