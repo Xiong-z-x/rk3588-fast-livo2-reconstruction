@@ -1,18 +1,32 @@
-# true 1 和 false 0 
-width: 3072             #图像宽度
-height: 2048            #图像高度
-Offset_x: 0             #X方向偏置
-Offset_y: 0             #Y方向偏置
+# Hikrobot USB camera configuration for the ELF2/RK3588 Mid-360 system.
+CameraName: hikrobot_camera
+SerialNumber: YOUR_HIKROBOT_CAMERA_SERIAL
+TopicName: /hikrobot_camera/rgb
+CameraInfoTopicName: /hikrobot_camera/camera_info
+FrameId: hikrobot_camera
 
-FrameRateEnable: true   #使能 
-FrameRate: 10           #帧率
+width: 1440
+height: 1080
+Width: 1440
+Height: 1080
+Offset_x: 0
+Offset_y: 0
 
-ExposureTime: 5000     #曝光时间
+FrameRateEnable: true
+FrameRate: 10
+TriggerEnable: 1
+TriggerMode: 1
+TriggerSource: 0
+LineSelector: 0
 
+ExposureTime: 5000
 GammaEnable: true
-Gamma: 0.7              #伽马因子
-
-GainAuto: 2             #亮度的固定增益
-
+Gamma: 0.7
+GainAuto: 2
 SaturationEnable: false
-Saturation: 128          #饱和度
+Saturation: 128
+
+CameraMatrix: [1363.99324, 0.0, 710.95104, 0.0, 1362.70434, 569.24445, 0.0, 0.0, 1.0]
+DistortionCoefficients: [-0.136245, 0.132247, -0.000207, 0.001075, 0.0]
+RectificationMatrix: [1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0]
+ProjectionMatrix: [1323.94861, 0.0, 711.47255, 0.0, 0.0, 1335.89893, 569.50401, 0.0, 0.0, 0.0, 1.0, 0.0]

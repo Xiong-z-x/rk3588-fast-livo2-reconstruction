@@ -44,12 +44,7 @@ if [ -n "$pid" ] && process_is_running "$pid"; then
   echo "[INFO] stopping rosbag pid=${pid}"
   kill -INT "$pid" || true
 else
-  if [ "$EXPLICIT_RUN_DIR" -eq 1 ]; then
-    echo "[WARN] pid file is missing or process is not alive; explicit run_dir was passed, so broad fallback kill is skipped."
-  else
-    echo "[WARN] pid file is missing or process is not alive; trying fallback process search."
-    pkill -INT -f "rosbag record .*raw_full" || true
-  fi
+  echo "[WARN] rosbag pid file is missing or process is not alive; broad fallback kill is disabled."
 fi
 
 for _ in $(seq 1 30); do
@@ -57,7 +52,7 @@ for _ in $(seq 1 30); do
     if ! process_is_running "$pid"; then
       break
     fi
-  elif ! pgrep -af "rosbag record .*raw_full" | grep -v grep >/dev/null; then
+  else
     break
   fi
   sleep 1
@@ -66,10 +61,6 @@ done
 if [ -n "$pid" ] && process_is_running "$pid"; then
   echo "[WARN] rosbag pid=${pid} is still alive after SIGINT; sending SIGTERM."
   kill -TERM "$pid" || true
-  sleep 2
-elif [ "$EXPLICIT_RUN_DIR" -eq 0 ] && pgrep -af "rosbag record .*raw_full" | grep -v grep >/dev/null; then
-  echo "[WARN] rosbag is still alive after SIGINT; sending SIGTERM."
-  pkill -TERM -f "rosbag record .*raw_full" || true
   sleep 2
 fi
 
@@ -85,9 +76,7 @@ if [ -n "$preview_pid" ] && process_is_running "$preview_pid"; then
   sleep 1
   kill -TERM "$preview_pid" 2>/dev/null || true
 else
-  if [ "$EXPLICIT_RUN_DIR" -eq 0 ]; then
-    pkill -TERM -f "image_view.*(/hikrobot_camera/rgb|${RUN_DIR})" || true
-  fi
+  echo "[WARN] camera preview pid file is missing or process is not alive; broad fallback kill is disabled."
 fi
 
 echo "[INFO] files:"

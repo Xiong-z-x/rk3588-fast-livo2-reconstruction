@@ -1,7 +1,6 @@
-import { useState, type ReactNode } from 'react'
+import { useEffect, useMemo, useState, type ReactNode } from 'react'
 import {
   Activity,
-  Box,
   Cpu,
   Database,
   Gauge,
@@ -16,38 +15,17 @@ import {
   Waypoints,
   Wifi,
 } from 'lucide-react'
-import { developmentSnapshot } from './data/mockAdapter'
+import { fetchLiveSnapshot, waitingSnapshot } from './data/liveAdapter'
+import type { EventRecord, RosStatusSnapshot, RuntimeMetric, StatusLevel, TopicStatus } from './types'
 import './App.css'
 
-type Status = 'ready' | 'waiting' | 'warning' | 'offline'
-type StageKey = 'overview' | 'map' | 'algorithms' | 'link'
+type StageKey = 'overview' | 'map' | 'runtime' | 'link'
 
-type TopicItem = {
-  topic: string
-  type: string
-  role: string
-  source: string
-  status: Status
-}
-
-type PipelineItem = {
-  title: string
-  detail: string
-  status: Status
-}
-
-type Metric = {
-  label: string
-  value: string
-  unit: string
-  status: Status
-}
-
-const statusMeta: Record<Status, { label: string; className: string }> = {
-  ready: { label: '上次确认', className: 'ready' },
-  waiting: { label: '等待接入', className: 'waiting' },
-  warning: { label: '需确认', className: 'warning' },
-  offline: { label: '未运行', className: 'offline' },
+const statusMeta: Record<StatusLevel, { label: string; className: string }> = {
+  ready: { label: '正常', className: 'ready' },
+  waiting: { label: '等待', className: 'waiting' },
+  warning: { label: '告警', className: 'warning' },
+  offline: { label: '离线', className: 'offline' },
 }
 
 const stages: Array<{
@@ -59,165 +37,32 @@ const stages: Array<{
 }> = [
   {
     key: 'overview',
-    label: '展示总览',
-    title: '任务态势总览',
-    desc: '用于汇报时快速说明 RK3588、ROS1、Foxglove、网页展示层之间的关系。',
+    label: '总览',
+    title: '端侧建图状态总览',
+    desc: '汇总 ROS、Docker、传感器 topic 与端侧资源。',
     icon: <Gauge size={20} />,
   },
   {
     key: 'map',
-    label: '彩色地图',
-    title: '三维点云地图展示',
-    desc: '优先展示 /map_colored 或 /cloud_registered，保留原始 Livox 点云对比入口。',
+    label: '点云',
+    title: 'FAST-LIVO2 点云链路',
+    desc: '优先检查 /cloud_registered、/path 与 WebGL/Foxglove 展示入口。',
     icon: <Map size={20} />,
   },
   {
-    key: 'algorithms',
-    label: '算法能力',
-    title: '后续算法结果区',
-    desc: '障碍物、区域、平面、路径和告警以 Marker、状态灯、统计卡片和日志呈现。',
-    icon: <Box size={20} />,
+    key: 'runtime',
+    label: '端侧',
+    title: 'RK3588 运行资源',
+    desc: '读取 CPU、内存、RKNPU debugfs、Docker 与 ROS Master 状态。',
+    icon: <Cpu size={20} />,
   },
   {
     key: 'link',
-    label: '接入链路',
-    title: '只读数据接入链路',
-    desc: '不重启、不修改组长 Docker/ROS 主线，只读取 Topic 并连接 Foxglove Bridge。',
+    label: '接入',
+    title: '只读接入链路',
+    desc: '默认只读采集状态；Foxglove bridge 默认绑定 127.0.0.1。',
     icon: <Network size={20} />,
   },
-]
-
-const pipeline: PipelineItem[] = [
-  {
-    title: 'RK3588 / LubanCat',
-    detail: '固定 IP 192.168.x.x，SSH 目标 user@rk3588-board.local',
-    status: 'ready',
-  },
-  {
-    title: 'Docker 容器 rk3588_dev',
-    detail: 'ROS1 Noetic，host network，工作区 /root/fast_lio2_ws',
-    status: 'ready',
-  },
-  {
-    title: 'ROS Topic 读取',
-    detail: '只读检查 /map_colored、/livox/lidar、/tf 等数据',
-    status: 'waiting',
-  },
-  {
-    title: 'Foxglove Bridge',
-    detail: '可用时连接 ws://192.168.x.x:8765',
-    status: 'warning',
-  },
-  {
-    title: 'Web Dashboard',
-    detail: '低带宽状态、汇报面板、算法结果展示，不替代 Foxglove 点云主显示',
-    status: 'waiting',
-  },
-]
-
-const topics: TopicItem[] = [
-  {
-    topic: '/map_colored',
-    type: 'sensor_msgs/PointCloud2',
-    role: 'FAST-LIO2 彩色三维重建点云',
-    source: '最新重建优先',
-    status: 'waiting',
-  },
-  {
-    topic: '/map_colored_only',
-    type: 'sensor_msgs/PointCloud2',
-    role: '仅彩色地图点云',
-    source: '重建结果',
-    status: 'waiting',
-  },
-  {
-    topic: '/map_uncolored',
-    type: 'sensor_msgs/PointCloud2',
-    role: '无色地图点云',
-    source: '调试对照',
-    status: 'waiting',
-  },
-  {
-    topic: '/livox/lidar',
-    type: 'livox_ros_driver2/CustomMsg',
-    role: 'Mid-360 原始雷达数据',
-    source: 'Livox Driver',
-    status: 'waiting',
-  },
-  {
-    topic: '/cloud_registered',
-    type: 'sensor_msgs/PointCloud2',
-    role: 'FAST-LIO2 配准后点云',
-    source: '建图主线',
-    status: 'waiting',
-  },
-  {
-    topic: '/Odometry',
-    type: 'nav_msgs/Odometry',
-    role: '当前位姿、速度和姿态',
-    source: '状态面板',
-    status: 'waiting',
-  },
-  {
-    topic: '/path',
-    type: 'nav_msgs/Path',
-    role: '设备运动轨迹',
-    source: '轨迹面板',
-    status: 'waiting',
-  },
-  {
-    topic: '/tf / /tf_static',
-    type: 'tf2_msgs/TFMessage',
-    role: '坐标系与 Frame Tree',
-    source: '3D 坐标系',
-    status: 'waiting',
-  },
-]
-
-const metrics: Metric[] = [
-  { label: '点云帧率', value: '等待', unit: 'Hz', status: 'waiting' },
-  { label: '点云数量', value: '等待', unit: 'points/frame', status: 'waiting' },
-  { label: '端到端延迟', value: '等待', unit: 'ms', status: 'waiting' },
-  { label: '当前位姿', value: '未接入', unit: 'XYZ / RPY', status: 'waiting' },
-]
-
-const algorithmSlots = [
-  { title: '障碍物检测', desc: 'Marker / Bounding Box / 告警 Topic', status: 'waiting' as Status },
-  { title: '区域分割', desc: 'ROI 高亮 / 语义颜色 / 区域统计', status: 'waiting' as Status },
-  { title: '地面与墙面识别', desc: '平面 Marker / 法向量 / 置信度', status: 'waiting' as Status },
-  { title: '路径规划', desc: '候选路径 / 目标点 / 安全距离', status: 'waiting' as Status },
-]
-
-const events = [
-  {
-    time: '演示',
-    level: 'INFO',
-    text: '汇报演示模式只用于展示界面效果，中心点云为可视化预览，不作为实测结果。',
-  },
-  {
-    time: '准备',
-    level: 'INFO',
-    text: '网页当前为展示层第二阶段设计预览，所有数值均标注为等待真实 ROS 数据。',
-  },
-  {
-    time: '接入',
-    level: 'INFO',
-    text: '真实点云显示仍优先使用 Foxglove Web/Desktop，连接 ws://192.168.x.x:8765。',
-  },
-  {
-    time: '边界',
-    level: 'WARN',
-    text: '只读进入 rk3588_dev 容器，不停止、不重启、不修改 Livox 或 FAST-LIO2 主线。',
-  },
-]
-
-const poseRows = [
-  ['X', '0.000 m'],
-  ['Y', '0.000 m'],
-  ['Z', '0.000 m'],
-  ['Roll', '0.00 deg'],
-  ['Pitch', '0.00 deg'],
-  ['Yaw', '0.00 deg'],
 ]
 
 const previewPoints = Array.from({ length: 220 }, (_, index) => ({
@@ -239,7 +84,11 @@ const previewStructures = [
   { id: 7, left: 58, top: 60, width: 22, height: 7, tone: 'cyan' },
 ]
 
-function StatusBadge({ status }: { status: Status }) {
+function formatNumber(value?: number | null, digits = 3): string {
+  return typeof value === 'number' && Number.isFinite(value) ? value.toFixed(digits) : '等待'
+}
+
+function StatusBadge({ status }: { status: StatusLevel }) {
   const meta = statusMeta[status]
 
   return (
@@ -270,36 +119,46 @@ function SectionTitle({
   )
 }
 
-function PipelineCard({ item }: { item: PipelineItem }) {
+function PipelineCard({
+  title,
+  detail,
+  status,
+}: {
+  title: string
+  detail: string
+  status: StatusLevel
+}) {
   return (
     <article className="pipeline-card">
       <div className="pipeline-node" aria-hidden="true" />
       <div>
         <div className="row-between">
-          <strong>{item.title}</strong>
-          <StatusBadge status={item.status} />
+          <strong>{title}</strong>
+          <StatusBadge status={status} />
         </div>
-        <p>{item.detail}</p>
+        <p>{detail}</p>
       </div>
     </article>
   )
 }
 
-function TopicRow({ item }: { item: TopicItem }) {
+function TopicRow({ item }: { item: TopicStatus }) {
+  const hzText = typeof item.hz === 'number' ? `${item.hz.toFixed(2)} Hz` : '未测频率'
+
   return (
     <article className="topic-row">
       <div>
-        <strong translate="no">{item.topic}</strong>
+        <strong translate="no">{item.name}</strong>
         <p>
-          <span translate="no">{item.type}</span> · {item.role}
+          <span translate="no">{item.type || 'unknown'}</span> / {hzText}
         </p>
       </div>
-      <span>{item.source}</span>
+      <StatusBadge status={item.status} />
     </article>
   )
 }
 
-function MetricCard({ metric }: { metric: Metric }) {
+function MetricCard({ metric }: { metric: RuntimeMetric }) {
   return (
     <article className="metric-card">
       <div className="row-between">
@@ -312,17 +171,17 @@ function MetricCard({ metric }: { metric: Metric }) {
   )
 }
 
-function StageInsight({ activeStage }: { activeStage: StageKey }) {
-  const stage = stages.find((item) => item.key === activeStage) ?? stages[0]
-
-  if (activeStage === 'algorithms') {
+function StageInsight({ activeStage, snapshot }: { activeStage: StageKey; snapshot: RosStatusSnapshot }) {
+  if (activeStage === 'runtime') {
     return (
       <div className="stage-insight algorithm-insight">
-        {algorithmSlots.map((slot) => (
-          <article key={slot.title}>
-            <StatusBadge status={slot.status} />
-            <strong>{slot.title}</strong>
-            <span>{slot.desc}</span>
+        {snapshot.metrics.map((metric) => (
+          <article key={metric.label}>
+            <StatusBadge status={metric.status} />
+            <strong>{metric.label}</strong>
+            <span>
+              {metric.value} {metric.unit}
+            </span>
           </article>
         ))}
       </div>
@@ -333,16 +192,16 @@ function StageInsight({ activeStage }: { activeStage: StageKey }) {
     return (
       <div className="stage-insight link-insight">
         <div>
-          <span>SSH</span>
-          <strong translate="no">user@192.168.x.x</strong>
+          <span>Host</span>
+          <strong translate="no">{snapshot.host}</strong>
         </div>
         <div>
           <span>Container</span>
-          <strong translate="no">docker exec rk3588_dev</strong>
+          <strong translate="no">{snapshot.container}</strong>
         </div>
         <div>
           <span>Bridge</span>
-          <strong translate="no">ws://192.168.x.x:8765</strong>
+          <strong translate="no">{snapshot.bridgeUrl}</strong>
         </div>
       </div>
     )
@@ -350,51 +209,49 @@ function StageInsight({ activeStage }: { activeStage: StageKey }) {
 
   return (
     <div className="stage-insight">
-      <strong>{stage.title}</strong>
-      <p>{stage.desc}</p>
+      <strong>{activeStage === 'map' ? '建图输出检查' : '系统状态来源'}</strong>
+      <p>{snapshot.note}</p>
       <div className="insight-tags">
-        <span>Live / Stale 明确区分</span>
-        <span>Foxglove 点云优先</span>
-        <span>网页状态低带宽接入</span>
+        <span>{snapshot.adapterState === 'live' ? '真实端侧数据' : '接口未接入'}</span>
+        <span>ROS1 Noetic</span>
+        <span>FAST-LIVO2 / ONLY_LIO</span>
       </div>
     </div>
   )
 }
 
 function SceneViewport({
+  snapshot,
   activeStage,
   presentationMode,
   onTogglePresentationMode,
 }: {
+  snapshot: RosStatusSnapshot
   activeStage: StageKey
   presentationMode: boolean
   onTogglePresentationMode: () => void
 }) {
   const focusTopic =
     activeStage === 'map'
-      ? '/map_colored'
+      ? '/cloud_registered'
       : activeStage === 'link'
         ? '/tf'
-        : activeStage === 'algorithms'
-          ? '/ui/markers'
-          : developmentSnapshot.primaryTopic
+        : activeStage === 'runtime'
+          ? '/diagnostics'
+          : snapshot.primaryTopic
 
   return (
-    <section className="scene-card" aria-label="三维点云与轨迹主窗口">
+    <section className="scene-card" aria-label="点云与端侧状态主窗口">
       <div className="scene-toolbar">
         <div>
-          <h2>三维点云地图 / 场景视图</h2>
+          <h2>三维建图链路 / 端侧状态</h2>
           <p>
-            当前焦点 <span translate="no">{focusTopic}</span>，真实显示以 Foxglove Bridge 数据为准
+            当前焦点 <span translate="no">{focusTopic}</span>，页面状态来自 <span translate="no">/api/status</span>
           </p>
         </div>
         <div className="scene-actions" aria-label="视图工具">
-          <button
-            className={presentationMode ? 'wide-action active' : 'wide-action'}
-            type="button"
-            onClick={onTogglePresentationMode}
-          >
-            {presentationMode ? '汇报演示' : '真实等待'}
+          <button className={presentationMode ? 'wide-action active' : 'wide-action'} type="button" onClick={onTogglePresentationMode}>
+            {presentationMode ? '状态图' : '等待图'}
           </button>
           <button type="button" aria-label="播放预览">
             <Play size={16} />
@@ -402,7 +259,7 @@ function SceneViewport({
           <button type="button" aria-label="重置视角">
             <RotateCcw size={16} />
           </button>
-          <button type="button" aria-label="最大化视图">
+          <button type="button" aria-label="最大化">
             <Maximize2 size={16} />
           </button>
         </div>
@@ -457,47 +314,50 @@ function SceneViewport({
 
         <div className="viewport-tools">
           <span>Fixed frame: map</span>
-          <span>Display frame: livox_frame</span>
-          <span>Decay: live / bag controlled</span>
+          <span>Primary: {snapshot.primaryTopic}</span>
+          <span>Updated: {snapshot.timestamp}</span>
         </div>
 
         <div className="mission-overlay">
-          <span>第二阶段展示目标</span>
-          <strong>真实点云由 Foxglove 承载，网页负责状态、轨迹、算法结果与汇报叙事。</strong>
+          <span>{snapshot.sourceLabel}</span>
+          <strong>{snapshot.adapterState === 'live' ? '当前页面正在显示端侧真实状态接口返回值。' : '未连接真实接口时不展示伪造实时指标。'}</strong>
         </div>
 
         <div className="height-legend">
-          <strong>点云高度 m</strong>
+          <strong>状态</strong>
           <div />
-          <span>-10</span>
-          <span>0</span>
-          <span>15</span>
-          <span>30</span>
+          <span>offline</span>
+          <span>wait</span>
+          <span>live</span>
         </div>
 
-        {presentationMode ? (
-          <div className="demo-disclaimer">
-            <strong>汇报演示模式</strong>
-            <span>中心点云为界面预览，不代表实测数据</span>
-          </div>
-        ) : (
+        {snapshot.adapterState !== 'live' ? (
           <div className="scene-notice">
             <Radar size={28} />
-            <strong>等待实时 ROS 数据</strong>
-            <span>当前为高级展示模板；真实点云打开 Foxglove 链接后由 RK3588 Bridge 提供。</span>
-            <code translate="no">ws://192.168.x.x:8765</code>
+            <strong>等待端侧接口</strong>
+            <span>{snapshot.note}</span>
+            <code translate="no">python3 rk3588_edge_status_server.py --host 127.0.0.1 --port 8766</code>
           </div>
-        )}
+        ) : null}
       </div>
     </section>
   )
 }
 
-function RightRail({ activeStage }: { activeStage: StageKey }) {
+function RightRail({ snapshot }: { snapshot: RosStatusSnapshot }) {
+  const poseRows = [
+    ['X', `${formatNumber(snapshot.pose.x)} m`],
+    ['Y', `${formatNumber(snapshot.pose.y)} m`],
+    ['Z', `${formatNumber(snapshot.pose.z)} m`],
+    ['Roll', `${formatNumber(snapshot.pose.roll, 2)} deg`],
+    ['Pitch', `${formatNumber(snapshot.pose.pitch, 2)} deg`],
+    ['Yaw', `${formatNumber(snapshot.pose.yaw, 2)} deg`],
+  ]
+
   return (
     <aside className="right-rail">
       <section className="panel-block">
-        <SectionTitle icon={<Waypoints size={17} />} title="实时位姿 Odometry" caption="等待 /Odometry 接入" />
+        <SectionTitle icon={<Waypoints size={17} />} title="位姿 Odometry" caption={snapshot.pose.source} />
         <div className="pose-grid">
           {poseRows.map(([label, value]) => (
             <div key={label}>
@@ -509,25 +369,25 @@ function RightRail({ activeStage }: { activeStage: StageKey }) {
       </section>
 
       <section className="metric-grid">
-        {metrics.map((metric) => (
+        {snapshot.metrics.map((metric) => (
           <MetricCard key={metric.label} metric={metric} />
         ))}
       </section>
 
       <section className="panel-block compact">
-        <SectionTitle icon={<Cpu size={17} />} title="系统运行状态" caption="低带宽状态 Topic 预留" />
+        <SectionTitle icon={<Cpu size={17} />} title="运行对象" caption="来自端侧状态接口" />
         <div className="system-list">
           <div>
+            <span>主机</span>
+            <strong translate="no">{snapshot.host}</strong>
+          </div>
+          <div>
             <span>容器</span>
-            <strong translate="no">rk3588_dev</strong>
+            <strong translate="no">{snapshot.container}</strong>
           </div>
           <div>
-            <span>网络</span>
-            <strong>host / 只读</strong>
-          </div>
-          <div>
-            <span>建图</span>
-            <strong>{activeStage === 'map' ? '等待地图数据' : '未接入'}</strong>
+            <span>Bridge</span>
+            <strong translate="no">{snapshot.bridgeUrl}</strong>
           </div>
         </div>
       </section>
@@ -535,20 +395,20 @@ function RightRail({ activeStage }: { activeStage: StageKey }) {
   )
 }
 
-function EventLog() {
+function EventLog({ events }: { events: EventRecord[] }) {
   return (
-    <section className="event-log" aria-label="日志或提示信息区域">
+    <section className="event-log" aria-label="事件日志">
       <div className="row-between">
-        <SectionTitle icon={<Terminal size={17} />} title="事件日志 / 提示信息" />
-        <div className="log-filters" aria-label="日志筛选">
-          <span>全部</span>
-          <span>INFO</span>
-          <span>WARN</span>
+        <SectionTitle icon={<Terminal size={17} />} title="事件日志" />
+        <div className="log-filters" aria-label="日志级别">
+          <span>LIVE</span>
+          <span>ROS</span>
+          <span>EDGE</span>
         </div>
       </div>
       <div className="log-rows">
-        {events.map((event) => (
-          <article key={`${event.time}-${event.text}`}>
+        {events.map((event, index) => (
+          <article key={`${event.time}-${event.level}-${index}`}>
             <span>{event.time}</span>
             <strong>{event.level}</strong>
             <p>{event.text}</p>
@@ -562,7 +422,77 @@ function EventLog() {
 export default function App() {
   const [activeStage, setActiveStage] = useState<StageKey>('overview')
   const [presentationMode, setPresentationMode] = useState(true)
+  const [snapshot, setSnapshot] = useState<RosStatusSnapshot>(waitingSnapshot)
   const currentStage = stages.find((stage) => stage.key === activeStage) ?? stages[0]
+
+  useEffect(() => {
+    let active = true
+    const controller = new AbortController()
+
+    async function refresh() {
+      try {
+        const next = await fetchLiveSnapshot(controller.signal)
+        if (active) {
+          setSnapshot(next)
+        }
+      } catch (error) {
+        if (active) {
+          const message = error instanceof Error ? error.message : String(error)
+          setSnapshot({
+            ...waitingSnapshot,
+            adapterState: 'error',
+            sourceLabel: '端侧状态接口不可达',
+            timestamp: new Date().toISOString(),
+            note: message,
+            events: [
+              {
+                time: new Date().toLocaleTimeString(),
+                level: 'ERROR',
+                text: message,
+              },
+            ],
+          })
+        }
+      }
+    }
+
+    void refresh()
+    const timer = window.setInterval(() => {
+      void refresh()
+    }, 2500)
+
+    return () => {
+      active = false
+      controller.abort()
+      window.clearInterval(timer)
+    }
+  }, [])
+
+  const pipeline = useMemo(
+    () => [
+      {
+        title: '端侧后端',
+        detail: snapshot.sourceLabel,
+        status: snapshot.adapterState === 'live' ? 'ready' : snapshot.adapterState === 'error' ? 'warning' : 'waiting',
+      },
+      {
+        title: 'Docker / ROS1',
+        detail: `${snapshot.container} / ${snapshot.host}`,
+        status: snapshot.topics.some((topic) => topic.status === 'ready') ? 'ready' : 'waiting',
+      },
+      {
+        title: 'FAST-LIVO2 输出',
+        detail: snapshot.primaryTopic,
+        status: snapshot.topics.find((topic) => topic.name === snapshot.primaryTopic)?.status ?? 'waiting',
+      },
+      {
+        title: 'Foxglove Bridge',
+        detail: snapshot.bridgeUrl,
+        status: snapshot.bridgeUrl.includes('127.0.0.1') ? 'ready' : 'warning',
+      },
+    ],
+    [snapshot],
+  )
 
   return (
     <main className="app-shell">
@@ -573,29 +503,29 @@ export default function App() {
           </div>
           <div>
             <span>平台</span>
-            <strong>RK3588 / LubanCat</strong>
+            <strong>RK3588 / ELF2</strong>
           </div>
         </div>
 
         <div className="title-cluster">
-          <h1>RK3588 三维感知展示中枢</h1>
-          <p>Livox Mid-360 LiDAR · ROS1 · Foxglove · FAST-LIO2 结果展示预留</p>
-          <div className="mission-tags" aria-label="展示重点">
-            <span>原始点云</span>
-            <span>彩色重建</span>
+          <h1>端侧三维重建状态面板</h1>
+          <p>Livox Mid-360 / Hikrobot / FAST-LIVO2 / ROS1 Noetic</p>
+          <div className="mission-tags" aria-label="显示重点">
+            <span>真实接口</span>
+            <span>ROS Topic</span>
             <span>位姿轨迹</span>
-            <span>算法结果</span>
+            <span>资源负载</span>
           </div>
         </div>
 
         <div className="header-status" aria-label="连接状态">
           <span>
             <Wifi size={15} />
-            固定 IP <b translate="no">192.168.x.x</b>
+            主机 <b translate="no">{snapshot.host}</b>
           </span>
           <span>
             <Database size={15} />
-            数据状态：等待 live ROS
+            数据状态：{statusMeta[snapshot.adapterState === 'live' ? 'ready' : snapshot.adapterState === 'error' ? 'warning' : 'waiting'].label}
           </span>
         </div>
       </header>
@@ -603,19 +533,19 @@ export default function App() {
       <section className="dashboard-layout">
         <aside className="left-rail">
           <section className="panel-block pipeline-block">
-            <SectionTitle icon={<Activity size={17} />} title="数据接入链路" caption="从板端到展示层的只读路径" />
+            <SectionTitle icon={<Activity size={17} />} title="数据接入链路" caption="从端侧后端到网页的只读状态流" />
             <div className="pipeline-list">
               {pipeline.map((item) => (
-                <PipelineCard key={item.title} item={item} />
+                <PipelineCard key={item.title} title={item.title} detail={item.detail} status={item.status as StatusLevel} />
               ))}
             </div>
           </section>
 
           <section className="panel-block topic-block">
-            <SectionTitle icon={<Layers size={17} />} title="Topic 映射" caption="同一套 UI 逻辑兼容原始点云与重建点云" />
+            <SectionTitle icon={<Layers size={17} />} title="ROS Topic" caption="后端通过 rostopic 读取真实类型与频率" />
             <div className="topic-list">
-              {topics.map((topic) => (
-                <TopicRow key={topic.topic} item={topic} />
+              {snapshot.topics.map((topic) => (
+                <TopicRow key={topic.name} item={topic} />
               ))}
             </div>
           </section>
@@ -623,20 +553,21 @@ export default function App() {
 
         <section className="center-stage">
           <SceneViewport
+            snapshot={snapshot}
             activeStage={activeStage}
             presentationMode={presentationMode}
             onTogglePresentationMode={() => setPresentationMode((value) => !value)}
           />
           <div className="center-bottom">
-            <StageInsight activeStage={activeStage} />
-            <EventLog />
+            <StageInsight activeStage={activeStage} snapshot={snapshot} />
+            <EventLog events={snapshot.events} />
           </div>
         </section>
 
-        <RightRail activeStage={activeStage} />
+        <RightRail snapshot={snapshot} />
       </section>
 
-      <nav className="stage-switcher" aria-label="展示面板切换">
+      <nav className="stage-switcher" aria-label="显示面板切换">
         {stages.map((stage) => (
           <button
             type="button"

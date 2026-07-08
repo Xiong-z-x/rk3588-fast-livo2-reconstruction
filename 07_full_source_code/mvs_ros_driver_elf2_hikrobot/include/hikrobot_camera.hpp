@@ -95,7 +95,9 @@ namespace camera
 
         //********** 读取待设置的摄像头参数 第三个参数是默认值 yaml文件未给出该值时生效 ********************************/
         node.param("width", width, 3072);
+        node.param("Width", width, width);
         node.param("height", height, 2048);
+        node.param("Height", height, height);
         node.param("FrameRateEnable", FrameRateEnable, false);
         node.param("FrameRate", FrameRate, 10);
         node.param("BurstFrameCount", BurstFrameCount, 10); // 一次触发采集的次数
@@ -107,9 +109,11 @@ namespace camera
         node.param("Saturation", Saturation, 128);
         node.param("Offset_x", Offset_x, 0);
         node.param("Offset_y", Offset_y, 0);
-        node.param("TriggerMode", TriggerMode, 1);
-        node.param("TriggerSource", TriggerSource, 2);
-        node.param("LineSelector", LineSelector, 2);
+        int trigger_enable = 1;
+        node.param("TriggerEnable", trigger_enable, 1);
+        node.param("TriggerMode", TriggerMode, trigger_enable ? 1 : 0);
+        node.param("TriggerSource", TriggerSource, 0);
+        node.param("LineSelector", LineSelector, 0);
 
         //********** 枚举设备 ********************************/
         MV_CC_DEVICE_INFO_LIST stDeviceList;
@@ -177,9 +181,9 @@ namespace camera
         if (GammaEnable)
             this->set(CAP_PROP_GAMMA, Gamma);
         this->set(CAP_PROP_GAINAUTO, GainAuto);
-        // this->set(CAP_PROP_TRIGGER_MODE, TriggerMode);
-        // this->set(CAP_PROP_TRIGGER_SOURCE, TriggerSource);
-        // this->set(CAP_PROP_LINE_SELECTOR, LineSelector);
+        this->set(CAP_PROP_LINE_SELECTOR, LineSelector);
+        this->set(CAP_PROP_TRIGGER_SOURCE, TriggerSource);
+        this->set(CAP_PROP_TRIGGER_MODE, TriggerMode);
 
         //********** frame **********/
         //白平衡 非自适应（给定参数0）
@@ -206,7 +210,7 @@ namespace camera
             this->set(CAP_PROP_SATURATION, Saturation);
         //软件触发
         // ********** frame **********/
-        nRet = MV_CC_SetEnumValue(handle, "TriggerMode", 0);
+        nRet = MV_OK;
         if (MV_OK == nRet)
         {
             printf("set TriggerMode OK!\n");
@@ -681,13 +685,13 @@ namespace camera
                 continue;
             }
             image_empty_count = 0; //空图帧数
-            //转换图像格式为BGR8
+            //转换图像格式为RGB8
 
-            stConvertParam.nWidth = 3072;                               //ch:图像宽 | en:image width
-            stConvertParam.nHeight = 2048;                              //ch:图像高 | en:image height
+            stConvertParam.nWidth = stImageInfo.nWidth;                 //ch:图像宽 | en:image width
+            stConvertParam.nHeight = stImageInfo.nHeight;               //ch:图像高 | en:image height
             stConvertParam.pSrcData = m_pBufForDriver;                  //ch:输入数据缓存 | en:input data buffer
             stConvertParam.nSrcDataLen = MAX_IMAGE_DATA_SIZE;           //ch:输入数据大小 | en:input data size
-            stConvertParam.enDstPixelType = PixelType_Gvsp_BGR8_Packed; //ch:输出像素格式 | en:output pixel format                      //! 输出格式 RGB
+            stConvertParam.enDstPixelType = PixelType_Gvsp_RGB8_Packed; //ch:输出像素格式 | en:output pixel format
             stConvertParam.pDstBuffer = m_pBufForSaveImage;             //ch:输出数据缓存 | en:output data buffer
             stConvertParam.nDstBufferSize = MAX_IMAGE_DATA_SIZE;        //ch:输出缓存大小 | en:output buffer size
             stConvertParam.enSrcPixelType = stImageInfo.enPixelType;    //ch:输入像素格式 | en:input pixel format                       //! 输入格式 RGB

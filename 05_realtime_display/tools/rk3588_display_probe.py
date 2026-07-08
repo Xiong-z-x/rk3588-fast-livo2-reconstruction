@@ -14,6 +14,8 @@ from __future__ import annotations
 import argparse
 import getpass
 import os
+import re
+import shlex
 import sys
 from dataclasses import dataclass
 
@@ -29,6 +31,20 @@ TARGET_TOPICS = (
     "/tf",
     "/tf_static",
 )
+
+SAFE_CONTAINER_RE = re.compile(r"^[A-Za-z0-9_.-]+$")
+
+
+def validate_container_name(container: str) -> str:
+    if not SAFE_CONTAINER_RE.fullmatch(container):
+        raise argparse.ArgumentTypeError("container name must match [A-Za-z0-9_.-]+")
+    return container
+
+
+def validate_bridge_address(address: str) -> str:
+    if not re.fullmatch(r"[0-9A-Za-z_.:-]+", address):
+        raise argparse.ArgumentTypeError("bridge address contains unsupported characters")
+    return address
 
 
 @dataclass(frozen=True)
@@ -61,8 +77,9 @@ def print_result(result: RemoteResult) -> None:
 
 def build_container_probe(container: str) -> str:
     topics = " ".join(TARGET_TOPICS)
+    container_q = shlex.quote(container)
     return f"""
-docker exec {container} bash -lc '
+docker exec {container_q} bash -lc '
 echo "===== identity ====="
 hostname; whoami; pwd
 
@@ -102,12 +119,14 @@ echo "===== foxglove_bridge ====="
 """.strip()
 
 
-def build_bridge_start(container: str) -> str:
+def build_bridge_start(container: str, bridge_address: str) -> str:
+    container_q = shlex.quote(container)
+    bridge_address_q = shlex.quote(bridge_address)
     return f"""
-docker exec -d {container} bash -lc '
+docker exec -d {container_q} bash -lc '
 source /opt/ros/noetic/setup.bash
 source /root/mid360_ws/devel/setup.bash 2>/dev/null || true
-exec roslaunch foxglove_bridge foxglove_bridge.launch port:=8765 address:=0.0.0.0
+exec roslaunch foxglove_bridge foxglove_bridge.launch port:=8765 address:={bridge_address_q}
 '
 """.strip()
 
@@ -116,7 +135,8 @@ def main() -> int:
     parser = argparse.ArgumentParser(description="Probe RK3588 ROS/Foxglove display readiness.")
     parser.add_argument("--host", default="192.168.x.x")
     parser.add_argument("--user", default="cat")
-    parser.add_argument("--container", default="mid360_ros")
+    parser.add_argument("--container", default="mid360_ros", type=validate_container_name)
+    parser.add_argument("--bridge-address", default="127.0.0.1", type=validate_bridge_address)
     parser.add_argument("--password-env", default="RK3588_PASS")
     parser.add_argument("--start-bridge", action="store_true", help="Start foxglove_bridge. Requires explicit user approval.")
     args = parser.parse_args()
@@ -126,7 +146,8 @@ def main() -> int:
         password = getpass.getpass(f"SSH password for {args.user}@{args.host}: ")
 
     client = paramiko.SSHClient()
-    client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+    client.load_system_host_keys()
+    client.set_missing_host_key_policy(paramiko.RejectPolicy())
     try:
         client.connect(
             hostname=args.host,
@@ -167,13 +188,13 @@ def main() -> int:
 
         if args.start_bridge:
             print("\n===== start_bridge_requested =====")
-            print("Starting foxglove_bridge with docker exec -d. This assumes ROS Master and /livox/lidar are already available.")
-            print_result(run_remote(client, "start_bridge", build_bridge_start(args.container), 20))
+            print(f"Starting foxglove_bridge on {args.bridge_address}:8765. This assumes ROS Master and /livox/lidar are already available.")
+            print_result(run_remote(client, "start_bridge", build_bridge_start(args.container, args.bridge_address), 20))
             print_result(
                 run_remote(
                     client,
                     "port_8765_after_start",
-                    "docker exec mid360_ros bash -lc '(ss -ltnp 2>/dev/null || netstat -ltnp 2>/dev/null || true) | grep -E \":8765|State|LISTEN\" | sed -n \"1,80p\"'",
+                    f"docker exec {shlex.quote(args.container)} bash -lc '(ss -ltnp 2>/dev/null || netstat -ltnp 2>/dev/null || true) | grep -E \":8765|State|LISTEN\" | sed -n \"1,80p\"'",
                     20,
                 )
             )

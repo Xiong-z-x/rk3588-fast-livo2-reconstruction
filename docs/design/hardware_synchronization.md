@@ -4,6 +4,12 @@
 
 Hardware synchronization is used to reduce timestamp drift between the camera stream and the LiDAR/IMU stream. In this project, the camera is configured in trigger mode and driven by an STM32 pulse output.
 
+The code path is explicit:
+
+- `07_full_source_code/mvs_ros_driver_elf2_hikrobot/include/hikrobot_camera.hpp` reads `TriggerEnable`, `TriggerMode`, `TriggerSource` and `LineSelector` from the ROS parameter tree.
+- `07_full_source_code/mvs_ros_driver_elf2_hikrobot/config/camera.yaml` and `07_full_source_code/mvs_ros_driver_project_config/config/left_camera_trigger.yaml` set `TriggerMode: 1`, `TriggerSource: 0` and `LineSelector: 0` for Line0-style external triggering.
+- `07_full_source_code/mvs_ros_driver_elf2_hikrobot/src/hikrobot_camera.cpp` publishes `/hikrobot_camera/rgb` as `RGB8` and fills `/hikrobot_camera/camera_info` from the saved K/D/R/P calibration values.
+
 ## Signal Path
 
 ```mermaid

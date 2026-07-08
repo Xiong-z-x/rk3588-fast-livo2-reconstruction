@@ -25,7 +25,7 @@ The repository is organized as a reproducible engineering package rather than a 
 - Targetless visual-LiDAR extrinsic calibration workflow based on `direct_visual_lidar_calibration`.
 - Point cloud export tools for colored FAST-LIVO2 output, registered intensity output, raw Livox accumulation and pose-accumulated height coloring.
 - WebGL viewers for static multi-layer point clouds and progressive reconstruction playback.
-- Runtime dashboard prototype for board-side status display and operator-facing visualization.
+- Read-only runtime dashboard with a real edge-status backend for ROS, Docker, CPU, memory and RKNPU status.
 
 ## System Overview
 
@@ -146,6 +146,29 @@ python3 04_visualization/webgl_and_progressive_viewers/create_progressive_recons
   --output-dir /path/to/result/progressive_reconstruction_viewer
 ```
 
+## Runtime Dashboard
+
+Start the read-only edge status backend on the board or inside the ROS host:
+
+```bash
+python3 05_realtime_display/tools/rk3588_edge_status_server.py \
+  --host 127.0.0.1 \
+  --port 8766 \
+  --container rk3588_dev
+```
+
+Run the web dashboard:
+
+```bash
+cd 05_realtime_display/web_dashboard
+npm ci
+npm run dev
+```
+
+The dashboard fetches `/api/status` through the Vite proxy. It does not fabricate live metrics: if the backend or ROS master is unavailable, the page shows waiting or error states.
+
+For Foxglove readiness checks, `05_realtime_display/tools/rk3588_display_probe.py` defaults to read-only mode, validates Docker container names, rejects unknown SSH host keys by default and binds bridge startup to `127.0.0.1` unless a different address is explicitly supplied.
+
 Recommended static viewer layers:
 
 - `lidar_pose_mapped_height_full`
@@ -162,6 +185,16 @@ Recommended static viewer layers:
 - [Calibration workflow](docs/design/calibration_workflow.md)
 - [Reconstruction and visualization](docs/design/reconstruction_visualization.md)
 - [Source provenance](07_full_source_code/source_provenance/SOURCE_PROVENANCE.yaml)
+
+## Static Checks
+
+Run the submission consistency check before packaging:
+
+```bash
+python3 06_source_manifests/verify_submission_static.py
+```
+
+The check verifies the FAST-LIVO2/Livox Driver2 dependency, Mid-360 parameter namespace, Hikrobot trigger/CameraInfo integration, dashboard live adapter/backend presence and runtime script safety constraints.
 
 ## Data Policy
 

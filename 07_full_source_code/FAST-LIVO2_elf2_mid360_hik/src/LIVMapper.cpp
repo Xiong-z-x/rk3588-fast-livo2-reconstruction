@@ -12,6 +12,18 @@ which is included as part of this source code package.
 
 #include "LIVMapper.h"
 
+namespace
+{
+void requireVectorSize(const std::vector<double> &values, std::size_t expected_size, const std::string &param_name)
+{
+  if (values.size() != expected_size)
+  {
+    throw std::runtime_error(param_name + " must contain " + std::to_string(expected_size) +
+                             " values, got " + std::to_string(values.size()));
+  }
+}
+} // namespace
+
 LIVMapper::LIVMapper(ros::NodeHandle &nh)
     : extT(0, 0, 0),
       extR(M3D::Identity())
@@ -105,6 +117,10 @@ void LIVMapper::readParameters(ros::NodeHandle &nh)
   nh.param<vector<double>>("extrin_calib/extrinsic_R", extrinR, vector<double>());
   nh.param<vector<double>>("extrin_calib/Pcl", cameraextrinT, vector<double>());
   nh.param<vector<double>>("extrin_calib/Rcl", cameraextrinR, vector<double>());
+  requireVectorSize(extrinT, 3, "extrin_calib/extrinsic_T");
+  requireVectorSize(extrinR, 9, "extrin_calib/extrinsic_R");
+  requireVectorSize(cameraextrinT, 3, "extrin_calib/Pcl");
+  requireVectorSize(cameraextrinR, 9, "extrin_calib/Rcl");
   nh.param<double>("debug/plot_time", plot_time, -10);
   nh.param<int>("debug/frame_cnt", frame_cnt, 6);
 
@@ -723,11 +739,11 @@ void LIVMapper::standard_pcl_cbk(const sensor_msgs::PointCloud2::ConstPtr &msg)
   sig_buffer.notify_all();
 }
 
-void LIVMapper::livox_pcl_cbk(const livox_ros_driver::CustomMsg::ConstPtr &msg_in)
+void LIVMapper::livox_pcl_cbk(const livox_ros_driver2::CustomMsg::ConstPtr &msg_in)
 {
   if (!lidar_en) return;
   mtx_buffer.lock();
-  livox_ros_driver::CustomMsg::Ptr msg(new livox_ros_driver::CustomMsg(*msg_in));
+  livox_ros_driver2::CustomMsg::Ptr msg(new livox_ros_driver2::CustomMsg(*msg_in));
   // if ((abs(msg->header.stamp.toSec() - last_timestamp_lidar) > 0.2 && last_timestamp_lidar > 0) || sync_jump_flag)
   // {
   //   ROS_WARN("lidar jumps %.3f\n", msg->header.stamp.toSec() - last_timestamp_lidar);
