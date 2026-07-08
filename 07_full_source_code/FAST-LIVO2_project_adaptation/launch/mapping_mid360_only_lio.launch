@@ -1,0 +1,6 @@
+<launch>
+  <include file="$(find fast_livo)/launch/mapping_mid360.launch">
+    <arg name="img_en" value="0" />
+    <arg name="rviz" value="false" />
+  </include>
+</launch>

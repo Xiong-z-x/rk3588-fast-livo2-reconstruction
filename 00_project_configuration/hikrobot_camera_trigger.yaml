@@ -1,0 +1,12 @@
+camera:
+  vendor: Hikrobot
+  device_usb_id: 2bdf:0001
+  serial_number: YOUR_HIKROBOT_CAMERA_SERIAL
+  topic_name: /hikrobot_camera/rgb
+  trigger_enable: 1
+  frame_rate: 10.0
+  pixel_format: 0
+  pixel_format_name: RGB8
+  config_path: /root/fast_lio2_ws/src/mvs_ros_driver/config/left_camera_trigger.yaml
+notes:
+  dev_video0: HDMI input, not the Hikrobot camera

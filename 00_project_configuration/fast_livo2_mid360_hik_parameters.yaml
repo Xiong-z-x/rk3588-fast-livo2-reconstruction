@@ -1,0 +1,36 @@
+fast_livo2:
+  algorithm: FAST-LIVO2
+  ros_version: noetic
+  common:
+    lid_topic: /livox/lidar
+    imu_topic: /livox/imu
+    img_topic: /hikrobot_camera/rgb
+  preprocess:
+    lidar_type: 1
+    scan_line: 4
+  camera:
+    model: pinhole
+    cam_width: 1440
+    cam_height: 1080
+    fx: 1363.99324
+    fy: 1362.70434
+    cx: 710.95104
+    cy: 569.24445
+    d0: -0.136245
+    d1: 0.132247
+    d2: -0.000207
+    d3: 0.001075
+    distortion_model: plumb_bob
+  camera_matrix:
+    K: [1363.99324, 0.0, 710.95104, 0.0, 1362.70434, 569.24445, 0.0, 0.0, 1.0]
+    D: [-0.136245, 0.132247, -0.000207, 0.001075, 0.0]
+    P: [1323.94861, 0.0, 711.47255, 0.0, 0.0, 1335.89893, 569.50401, 0.0, 0.0, 0.0, 1.0, 0.0]
+  extrinsic_lidar_to_camera_fast_livo2_form:
+    Rcl: [0.001521317694, -0.999976761951, -0.006645385636, 0.416612140501, 0.00667500765, -0.909059826777, 0.909083060001, -0.001385579535, 0.416612614055]
+    Pcl: [-0.024721033784, -0.205929867793, 0.013730854987]
+  offline_replay:
+    recommended_play_rate: 0.5
+    post_play_wait_sec: 60
+  lio_only:
+    img_en: 0
+    mode: ONLY_LIO

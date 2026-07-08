@@ -1,0 +1,9 @@
+{
+  "source_repo": "https://github.com/hku-mars/FAST-LIVO2",
+  "source_commit": "0d2c0346107b75b59934975adec9a6eeeb913c64",
+  "adapted_for": "RK3588/ELF2 Mid-360 Hikrobot ROS1 livox_ros_driver2",
+  "local_directory": "07_full_source_code/FAST-LIVO2_elf2_mid360_hik",
+  "adaptation_directory": "07_full_source_code/FAST-LIVO2_project_adaptation",
+  "sha256": "806a967f883db4e801fd04ad95a40c8c55c078aeb913237953ea58c7cbe41aa3",
+  "created_at": "2026-06-08 22:18:21"
+}

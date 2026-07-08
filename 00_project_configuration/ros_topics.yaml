@@ -1,0 +1,26 @@
+ros_version: noetic
+main_workspace: /root/fast_lio2_ws
+sensor_topics:
+  livox_lidar:
+    topic: /livox/lidar
+    type: livox_ros_driver2/CustomMsg
+    expected_rate_hz: 10
+  livox_imu:
+    topic: /livox/imu
+    type: sensor_msgs/Imu
+    expected_rate_hz: 200
+  hikrobot_rgb:
+    topic: /hikrobot_camera/rgb
+    type: sensor_msgs/Image
+    expected_rate_hz: 9-10
+  hikrobot_camera_info:
+    topic: /hikrobot_camera/camera_info
+    type: sensor_msgs/CameraInfo
+    expected_rate_hz: 9-10
+fast_livo2_common:
+  lid_topic: /livox/lidar
+  imu_topic: /livox/imu
+  img_topic: /hikrobot_camera/rgb
+preprocess:
+  lidar_type: 1
+  scan_line: 4

@@ -1,0 +1,11 @@
+livox_mid360:
+  sensor: Livox Mid-360
+  serial_number: YOUR_MID360_SERIAL_NUMBER
+  lidar_ip: 192.168.x.x
+  mac: YOUR_MID360_MAC_ADDRESS
+rk3588_network:
+  eth0:
+    - 192.168.x.x/24
+    - 192.168.x.x/24
+notes:
+  serial_suffix_is_not_ip: true

@@ -1,0 +1,46 @@
+# Build products
+build/
+devel/
+install/
+log/
+dist/
+node_modules/
+__pycache__/
+*.pyc
+
+# Large data and generated point clouds
+*.bag
+*.pcd
+*.ply
+*.bin
+*.npy
+*.npz
+*.las
+*.laz
+
+# Generated visual artifacts
+*.zip
+*.tar
+*.tar.gz
+*.7z
+*.rar
+*.mp4
+*.avi
+*.mkv
+
+# Reports and local documents
+*.docx
+*.pdf
+
+# Secrets and local runtime state
+.env
+.ssh/
+*.key
+*.pem
+*.log
+
+# OS and editor
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/

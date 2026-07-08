@@ -1,0 +1,11 @@
+docker:
+  container_name: rk3588_dev
+  image: ran13245/ros-noetic:livox_px4
+  network: host
+  workspace_mounts:
+    - host: /home/cat/fast_lio2_ws
+      container: /root/fast_lio2_ws
+    - host: /home/cat/mid360_data
+      container: /root/mid360_data
+  main_workspace: /root/fast_lio2_ws
+  ros_distro: noetic

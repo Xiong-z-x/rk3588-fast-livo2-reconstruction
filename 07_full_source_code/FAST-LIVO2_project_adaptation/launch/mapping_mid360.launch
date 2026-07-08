@@ -1,0 +1,20 @@
+<launch>
+  <arg name="rviz" default="false" />
+  <arg name="img_en" default="1" />
+
+  <rosparam command="load" file="$(find fast_livo)/config/mid360.yaml" />
+  <rosparam command="load" file="$(find fast_livo)/config/camera_pinhole_mid360.yaml" />
+
+  <param name="/common/lid_topic" value="/livox/lidar" />
+  <param name="/common/imu_topic" value="/livox/imu" />
+  <param name="/common/img_topic" value="/hikrobot_camera/rgb" />
+  <param name="/common/img_en" value="$(arg img_en)" />
+  <param name="/preprocess/lidar_type" value="1" />
+  <param name="/preprocess/scan_line" value="4" />
+
+  <node pkg="fast_livo" type="fastlivo_mapping" name="laserMapping" output="screen" />
+
+  <group if="$(arg rviz)">
+    <node pkg="rviz" type="rviz" name="rviz" args="-d $(find fast_livo)/rviz_cfg/fast_livo.rviz" />
+  </group>
+</launch>
