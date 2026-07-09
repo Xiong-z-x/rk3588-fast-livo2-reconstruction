@@ -83,6 +83,7 @@ flowchart LR
 08_edge_measurement_runtime/        Edge measurement and runtime integration programs
 mechanical_design/                 SolidWorks mechanical design sources
 media/                             Hardware images and demonstration videos
+提交材料/                            Official submission package
 submission_materials/              Final report and authorization material
 docs/design/                       Architecture, synchronization, calibration and visualization notes
 docs/evidence/                     Reproducibility records for build, rosbag, sync, runtime and reconstruction results
@@ -110,6 +111,10 @@ The imported mechanical source package contains 697 valid design/reference files
 
 ## Media and Submission Materials
 
+- [云顶智量-展示视频](提交材料/云顶智量-展示视频.mp4)
+- [云顶智量-报告](提交材料/云顶智量-报告.pdf)
+- [云顶智量-代码](提交材料/云顶智量-代码.rar)
+- [云顶智量-授权书](提交材料/云顶智量-授权书.pdf)
 - [Final project report](submission_materials/yunding_zhiliang_final_report.pdf)
 - [Authorization document](submission_materials/authorization.pdf)
 - [Project demonstration video](media/videos/yunding_zhiliang_demo.mp4)

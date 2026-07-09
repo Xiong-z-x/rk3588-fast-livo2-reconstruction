@@ -35,6 +35,8 @@ __pycache__/
 # Competition submission artifacts intentionally kept in this repository
 !submission_materials/
 !submission_materials/**
+!提交材料/
+!提交材料/**
 !media/
 !media/**
 !mechanical_design/
