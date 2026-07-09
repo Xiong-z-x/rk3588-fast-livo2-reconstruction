@@ -2,21 +2,27 @@
 
 This directory stores the mechanical design source files used by the project.
 
-## Handheld Kit
+## Source Package
 
-`handheld_kit/` contains the SolidWorks assembly and part files for the handheld data-acquisition structure. The fixture holds the Livox Mid-360 LiDAR, Hikrobot industrial camera and ELF2/RK3588-class board on one rigid frame for indoor calibration, rosbag recording and reconstruction tests.
+`solidworks_sources/` is imported from the local design source directory `D:\solidworks`. It contains the E200 UAV platform, handheld acquisition fixture and embedded mounting structures used around the Livox Mid-360, Hikrobot camera and RK3588/ELF2-class board.
 
-Included files:
+Imported source summary:
 
-| File | Description |
+| Directory | Content |
 | --- | --- |
-| `handheld_kit/手持件.SLDASM` | SolidWorks assembly for the handheld acquisition kit |
-| `handheld_kit/雷达底件.SLDPRT` | LiDAR mounting base |
-| `handheld_kit/相机底座固定.SLDPRT` | Camera mounting fixture |
-| `handheld_kit/顶层.SLDPRT` | Upper support plate |
-| `handheld_kit/底层.SLDPRT` | Lower support plate |
-| `handheld_kit/铝柱50mm.SLDPRT` | 50 mm aluminum spacer column |
+| `solidworks_sources/E200/` | UAV platform assembly, propulsion/motor models, board mounting parts and imported component models |
+| `solidworks_sources/手持件/` | Handheld data-acquisition fixture assembly and part files |
+| `solidworks_sources/嵌入式/` | Embedded board, LiDAR-camera mounting and protective-shell design variants |
 
-## UAV Platform
+File summary after excluding SolidWorks temporary lock files:
 
-`uav_platform/` is reserved for the UAV mechanical source package. During the current repository import, the local source directory `D:\无人机` only contained SolidWorks temporary lock files and zero-byte placeholders, so no valid UAV SolidWorks source file was committed from that directory. The UAV hardware images and demonstration videos are stored under `media/`.
+| Type | Count | Size |
+| --- | ---: | ---: |
+| SolidWorks assemblies `.SLDASM/.sldasm` | 513 | 135.44 MB |
+| SolidWorks parts `.SLDPRT/.sldprt` | 172 | 126.59 MB |
+| STEP models `.STEP/.step` | 3 | 52.71 MB |
+| STL models `.STL/.stl` | 3 | 1.14 MB |
+| 3MF reference models `.3MF/.3mf` | 3 | 0.31 MB |
+| PNG reference images `.png` | 3 | 2.67 MB |
+
+CAD files are tracked with Git LFS.
