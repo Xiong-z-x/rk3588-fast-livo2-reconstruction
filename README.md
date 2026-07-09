@@ -14,7 +14,16 @@
 
 This repository collects the source code, launch scripts, calibration workflow, runtime configuration and visualization tools used in an embedded 3D reconstruction system. The project integrates Livox Mid-360 LiDAR, a Hikrobot industrial camera, STM32 hardware triggering and a ROS1 Docker runtime on an RK3588/ELF2-class board.
 
-The repository is organized as a reproducible engineering package rather than a raw experiment dump. Large data products such as rosbag files, PCD files, WebGL caches and report binaries are intentionally excluded.
+The repository is organized as a reproducible engineering package rather than a raw experiment dump. It contains the actual project source code, launch scripts, configuration templates, mechanical design sources, public submission materials and selected media assets. Large runtime data products such as rosbag files, PCD files and WebGL caches are intentionally excluded.
+
+<p align="center">
+  <img src="media/images/handheld_kit_real.png" alt="Handheld LiDAR-camera acquisition kit" width="48%">
+  <img src="media/images/uav_platform_real.png" alt="UAV platform with mounted LiDAR-camera module" width="42%">
+</p>
+
+<p align="center">
+  <b>Left:</b> handheld calibration and mapping kit. <b>Right:</b> UAV platform carrying the LiDAR-camera module.
+</p>
 
 ## Highlights
 
@@ -26,6 +35,16 @@ The repository is organized as a reproducible engineering package rather than a 
 - Point cloud export tools for colored FAST-LIVO2 output, registered intensity output, raw Livox accumulation and pose-accumulated height coloring.
 - WebGL viewers for static multi-layer point clouds and progressive reconstruction playback.
 - Read-only runtime dashboard with a real edge-status backend for ROS, Docker, CPU, memory and RKNPU status.
+
+## Verification Status
+
+This repository contains project source files and engineering assets used in the real RK3588/ELF2 reconstruction workflow. The current repository state has been checked with:
+
+- `python3 06_source_manifests/verify_submission_static.py`
+- `git diff --check`
+- Git LFS tracking for large MP4 media assets
+
+The static verification covers line endings, shell syntax, Python syntax, unsafe runtime patterns, configuration placeholders, package layout, FAST-LIVO2/Livox dependency consistency and dashboard backend structure. Target-board reproduction still requires the RK3588/ELF2 ROS1 runtime and the deployment sequence in [README_REPRODUCE.md](README_REPRODUCE.md).
 
 ## System Overview
 
@@ -54,6 +73,10 @@ flowchart LR
 05_realtime_display/               Board status probe and web dashboard prototype
 06_source_manifests/               Source provenance records
 07_full_source_code/               ELF2-adapted upstream source trees and project adaptation configs
+08_edge_measurement_runtime/        Edge measurement and runtime integration programs
+mechanical_design/                 SolidWorks mechanical design sources
+media/                             Hardware images and demonstration videos
+submission_materials/              Final report and authorization material
 docs/design/                       Architecture, synchronization, calibration and visualization notes
 docs/evidence/                     Evidence templates for build, rosbag, sync, runtime and reconstruction results
 ```
@@ -71,6 +94,22 @@ The source directories are named with an `elf2` suffix to identify this reposito
 | `07_full_source_code/mvs_ros_driver_elf2_hikrobot/` | Hikrobot MVS ROS driver source tree |
 | `07_full_source_code/mvs_ros_driver_project_config/` | Hikrobot trigger and calibration config template |
 | `07_full_source_code/direct_visual_lidar_calibration_elf2/` | Targetless visual-LiDAR calibration source tree |
+
+## Mechanical Design
+
+The repository includes SolidWorks source files for the handheld acquisition kit under [`mechanical_design/handheld_kit`](mechanical_design/handheld_kit). This fixture was designed for indoor calibration, rosbag recording and reconstruction testing with the same Livox Mid-360 and Hikrobot camera pair used by the main mapping pipeline.
+
+The UAV platform media and report figures are included under [`media`](media). The current import of the local `D:\无人机` source directory did not contain valid non-empty SolidWorks source files, so only verified mechanical source files were committed.
+
+## Media and Submission Materials
+
+- [Final project report](submission_materials/yunding_zhiliang_final_report.pdf)
+- [Authorization document](submission_materials/authorization.pdf)
+- [Project demonstration video](media/videos/yunding_zhiliang_demo.mp4)
+- [Reconstruction screen recording 2026-07-07 18:24](media/videos/modeling_reconstruction_demo_20260707_182418.mp4)
+- [Reconstruction screen recording 2026-07-07 18:30](media/videos/modeling_reconstruction_demo_20260707_183042.mp4)
+
+Large MP4 assets are tracked with Git LFS to keep the Git history usable while preserving the original submission videos.
 
 ## Runtime Environment
 
@@ -224,8 +263,10 @@ The repository intentionally excludes:
 - generated `.pcd`, `.ply`, `.bin`, `.npy` and `.npz` point cloud artifacts
 - WebGL build/cache outputs
 - browser caches
-- report `.docx` and `.pdf` files
+- editable report `.docx` drafts
 - private SSH keys, tokens, real hardware serial numbers and MAC addresses
+
+Public submission PDFs, selected report images and demonstration videos are intentionally included under `submission_materials/` and `media/`.
 
 ## Third-Party Notice
 

@@ -32,6 +32,14 @@ __pycache__/
 *.docx
 *.pdf
 
+# Competition submission artifacts intentionally kept in this repository
+!submission_materials/
+!submission_materials/**
+!media/
+!media/**
+!mechanical_design/
+!mechanical_design/**
+
 # Secrets and local runtime state
 .env
 .ssh/
